@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Maverick Kanban</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #c9d1d9; min-height: 100vh; }
@@ -27,20 +28,25 @@
     .task:hover { border-color: #58a6ff; }
     .task.dragging { opacity: 0.5; }
     .task-title { font-weight: 500; margin-bottom: 0.25rem; }
+    .task-preview { font-size: 0.8rem; color: #8b949e; margin: 0.25rem 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .task-meta { font-size: 0.75rem; color: #8b949e; display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .task-meta .priority { padding: 0.1rem 0.4rem; border-radius: 3px; }
     .priority-high { background: #f85149; color: white; }
     .priority-medium { background: #d29922; color: white; }
     .priority-low { background: #388bfd; color: white; }
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 100; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 100; overflow-y: auto; padding: 2rem 0; }
     .modal.active { display: flex; }
-    .modal-content { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.5rem; width: 90%; max-width: 400px; }
-    .modal-content h2 { margin-bottom: 1rem; }
+    .modal-content { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.5rem; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; margin: auto; }
+    .modal-content h2 { margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; }
+    .modal-content h2 .edit-toggle { font-size: 0.8rem; background: #30363d; border: none; color: #c9d1d9; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; }
+    .modal-content h2 .edit-toggle:hover { background: #484f58; }
     .form-group { margin-bottom: 1rem; }
     .form-group label { display: block; margin-bottom: 0.25rem; font-size: 0.9rem; color: #8b949e; }
     .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.5rem; background: #0d1117; border: 1px solid #30363d; border-radius: 4px; color: #c9d1d9; font-size: 0.9rem; }
-    .form-group textarea { min-height: 80px; resize: vertical; }
-    .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+    .form-group textarea { min-height: 200px; resize: vertical; font-family: monospace; }
+    .form-row { display: flex; gap: 1rem; }
+    .form-row .form-group { flex: 1; }
+    .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
     .modal-actions button { padding: 0.5rem 1rem; border-radius: 4px; border: none; cursor: pointer; }
     .btn-cancel { background: #30363d; color: #c9d1d9; }
     .btn-save { background: #238636; color: white; }
@@ -50,9 +56,28 @@
     .assignee { display: inline-flex; align-items: center; gap: 0.25rem; }
     .assignee.matt { color: #a371f7; }
     .assignee.maverick { color: #58a6ff; }
+    
+    /* Detail view styles */
+    .detail-view { padding: 1rem 0; }
+    .detail-header { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .detail-header .priority, .detail-header .assignee { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.85rem; }
+    .detail-header .assignee { background: #30363d; }
+    .detail-body { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 1rem; line-height: 1.6; }
+    .detail-body h2 { font-size: 1.2rem; margin: 1rem 0 0.5rem; border-bottom: 1px solid #30363d; padding-bottom: 0.25rem; }
+    .detail-body h2:first-child { margin-top: 0; }
+    .detail-body ul, .detail-body ol { margin-left: 1.5rem; margin-bottom: 0.5rem; }
+    .detail-body li { margin-bottom: 0.25rem; }
+    .detail-body p { margin-bottom: 0.5rem; }
+    .detail-body hr { border: none; border-top: 1px solid #30363d; margin: 1rem 0; }
+    .detail-body strong { color: #f0f6fc; }
+    .detail-body code { background: #30363d; padding: 0.1rem 0.3rem; border-radius: 3px; font-size: 0.9em; }
+    .detail-body a { color: #58a6ff; }
+    .empty-desc { color: #8b949e; font-style: italic; }
+    
     @media (max-width: 600px) {
       .column { min-width: 260px; max-width: 260px; }
       .header { padding: 1rem; }
+      .form-row { flex-direction: column; gap: 0; }
     }
   </style>
 </head>
@@ -60,7 +85,7 @@
   <div class="header">
     <h1><span>🦅</span> Maverick Kanban</h1>
     <div class="header-actions">
-      <span class="sync-status" id="sync-status">●  Connecting...</span>
+      <span class="sync-status" id="sync-status">● Connecting...</span>
       <button class="refresh-btn" onclick="loadTasks()" title="Refresh">🔄</button>
       <button class="add-btn" onclick="openModal()">+ Add Task</button>
     </div>
@@ -87,44 +112,64 @@
 
   <div class="modal" id="modal">
     <div class="modal-content">
-      <h2 id="modal-title">Add Task</h2>
+      <h2>
+        <span id="modal-title">Add Task</span>
+        <button class="edit-toggle" id="edit-toggle" onclick="toggleEditMode()" style="display:none;">✏️ Edit</button>
+      </h2>
       <input type="hidden" id="task-id">
-      <div class="form-group">
-        <label>Title</label>
-        <input type="text" id="task-title" placeholder="What needs to be done?">
+      
+      <!-- Detail View -->
+      <div class="detail-view" id="detail-view" style="display:none;">
+        <div class="detail-header">
+          <span class="priority" id="detail-priority"></span>
+          <span class="assignee" id="detail-assignee"></span>
+          <span style="color:#8b949e;font-size:0.85rem;" id="detail-status"></span>
+        </div>
+        <div class="detail-body" id="detail-body"></div>
       </div>
-      <div class="form-group">
-        <label>Description</label>
-        <textarea id="task-desc" placeholder="Details..."></textarea>
+      
+      <!-- Edit Form -->
+      <div id="edit-form">
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="task-title" placeholder="What needs to be done?">
+        </div>
+        <div class="form-group">
+          <label>Description (Markdown supported)</label>
+          <textarea id="task-desc" placeholder="Details... supports **bold**, - lists, ## headers"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Assignee</label>
+            <select id="task-assignee">
+              <option value="maverick">🦅 Maverick</option>
+              <option value="matt">👤 Matt</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Priority</label>
+            <select id="task-priority">
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="task-status">
+              <option value="backlog">Backlog</option>
+              <option value="todo">To Do</option>
+              <option value="in-progress">In Progress</option>
+              <option value="done">Done</option>
+            </select>
+          </div>
+        </div>
       </div>
-      <div class="form-group">
-        <label>Assignee</label>
-        <select id="task-assignee">
-          <option value="maverick">🦅 Maverick</option>
-          <option value="matt">👤 Matt</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Priority</label>
-        <select id="task-priority">
-          <option value="low">Low</option>
-          <option value="medium">Medium</option>
-          <option value="high">High</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Status</label>
-        <select id="task-status">
-          <option value="backlog">Backlog</option>
-          <option value="todo">To Do</option>
-          <option value="in-progress">In Progress</option>
-          <option value="done">Done</option>
-        </select>
-      </div>
-      <div class="modal-actions">
+      
+      <div class="modal-actions" id="modal-actions">
         <button class="btn-delete" id="btn-delete" onclick="deleteTask()" style="display:none;">Delete</button>
         <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-        <button class="btn-save" onclick="saveTask()">Save</button>
+        <button class="btn-save" id="btn-save" onclick="saveTask()">Save</button>
       </div>
     </div>
   </div>
@@ -134,6 +179,8 @@
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbnFuc2ptY3l6a3BvcXluYWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MjcxMDcsImV4cCI6MjA4NTMwMzEwN30.unckvGv1xozWSGGt5adOFKgffzZtyGNn5j_tsCm72WU';
     
     let tasks = [];
+    let isEditMode = false;
+    let currentTaskId = null;
 
     function setStatus(status, text) {
       const el = document.getElementById('sync-status');
@@ -181,7 +228,7 @@
     async function createTask(task) {
       setStatus('syncing', 'Saving...');
       try {
-        const res = await api('POST', 'kanban_tasks', {
+        await api('POST', 'kanban_tasks', {
           id: task.id,
           title: task.title,
           description: task.desc,
@@ -190,7 +237,6 @@
           status: task.status
         });
         setStatus('synced', 'Synced');
-        return res;
       } catch (e) {
         console.error(e);
         setStatus('error', 'Save failed');
@@ -233,9 +279,9 @@
         document.getElementById(`count-${status}`).textContent = statusTasks.length;
         
         container.innerHTML = statusTasks.map(task => `
-          <div class="task" draggable="true" data-id="${task.id}" ondragstart="dragStart(event)" ondragend="dragEnd(event)" onclick="editTask('${task.id}')">
+          <div class="task" draggable="true" data-id="${task.id}" ondragstart="dragStart(event)" ondragend="dragEnd(event)" onclick="viewTask('${task.id}')">
             <div class="task-title">${escapeHtml(task.title)}</div>
-            ${task.desc ? `<div style="font-size:0.8rem;color:#8b949e;margin:0.25rem 0;">${escapeHtml(task.desc).substring(0,60)}${task.desc.length > 60 ? '...' : ''}</div>` : ''}
+            ${task.desc ? `<div class="task-preview">${escapeHtml(task.desc.split('\n')[0]).substring(0,50)}...</div>` : ''}
             <div class="task-meta">
               <span class="priority priority-${task.priority}">${task.priority}</span>
               <span class="assignee ${task.assignee}">${task.assignee === 'maverick' ? '🦅' : '👤'} ${task.assignee}</span>
@@ -251,20 +297,72 @@
       return div.innerHTML;
     }
 
-    function openModal(taskId = null) {
-      document.getElementById('modal').classList.add('active');
-      document.getElementById('modal-title').textContent = taskId ? 'Edit Task' : 'Add Task';
-      document.getElementById('btn-delete').style.display = taskId ? 'block' : 'none';
+    function toggleEditMode() {
+      isEditMode = !isEditMode;
+      showModal();
+    }
+
+    function showModal() {
+      const task = tasks.find(t => t.id === currentTaskId);
+      const editToggle = document.getElementById('edit-toggle');
+      const detailView = document.getElementById('detail-view');
+      const editForm = document.getElementById('edit-form');
+      const btnSave = document.getElementById('btn-save');
+      const btnDelete = document.getElementById('btn-delete');
       
-      if (taskId) {
-        const task = tasks.find(t => t.id === taskId);
-        document.getElementById('task-id').value = task.id;
-        document.getElementById('task-title').value = task.title;
-        document.getElementById('task-desc').value = task.desc || '';
-        document.getElementById('task-assignee').value = task.assignee;
-        document.getElementById('task-priority').value = task.priority;
-        document.getElementById('task-status').value = task.status;
+      if (currentTaskId && !isEditMode) {
+        // Detail view mode
+        document.getElementById('modal-title').textContent = task.title;
+        editToggle.style.display = 'inline-block';
+        editToggle.textContent = '✏️ Edit';
+        detailView.style.display = 'block';
+        editForm.style.display = 'none';
+        btnSave.style.display = 'none';
+        btnDelete.style.display = 'none';
+        
+        // Populate detail view
+        const priorityEl = document.getElementById('detail-priority');
+        priorityEl.textContent = task.priority;
+        priorityEl.className = `priority priority-${task.priority}`;
+        
+        const assigneeEl = document.getElementById('detail-assignee');
+        assigneeEl.textContent = (task.assignee === 'maverick' ? '🦅 ' : '👤 ') + task.assignee;
+        assigneeEl.className = `assignee ${task.assignee}`;
+        
+        document.getElementById('detail-status').textContent = `Status: ${task.status}`;
+        
+        const bodyEl = document.getElementById('detail-body');
+        if (task.desc) {
+          bodyEl.innerHTML = marked.parse(task.desc);
+        } else {
+          bodyEl.innerHTML = '<p class="empty-desc">No description</p>';
+        }
       } else {
+        // Edit mode
+        document.getElementById('modal-title').textContent = currentTaskId ? 'Edit Task' : 'Add Task';
+        editToggle.style.display = currentTaskId ? 'inline-block' : 'none';
+        editToggle.textContent = '👁️ View';
+        detailView.style.display = 'none';
+        editForm.style.display = 'block';
+        btnSave.style.display = 'inline-block';
+        btnDelete.style.display = currentTaskId ? 'inline-block' : 'none';
+        
+        if (task) {
+          document.getElementById('task-id').value = task.id;
+          document.getElementById('task-title').value = task.title;
+          document.getElementById('task-desc').value = task.desc || '';
+          document.getElementById('task-assignee').value = task.assignee;
+          document.getElementById('task-priority').value = task.priority;
+          document.getElementById('task-status').value = task.status;
+        }
+      }
+    }
+
+    function openModal(taskId = null) {
+      currentTaskId = taskId;
+      isEditMode = !taskId; // New task = edit mode, existing = detail view
+      
+      if (!taskId) {
         document.getElementById('task-id').value = '';
         document.getElementById('task-title').value = '';
         document.getElementById('task-desc').value = '';
@@ -272,14 +370,19 @@
         document.getElementById('task-priority').value = 'medium';
         document.getElementById('task-status').value = 'backlog';
       }
+      
+      showModal();
+      document.getElementById('modal').classList.add('active');
+    }
+
+    function viewTask(id) {
+      openModal(id);
     }
 
     function closeModal() {
       document.getElementById('modal').classList.remove('active');
-    }
-
-    function editTask(id) {
-      openModal(id);
+      currentTaskId = null;
+      isEditMode = false;
     }
 
     async function saveTask() {
@@ -310,7 +413,7 @@
     }
 
     async function deleteTask() {
-      const id = document.getElementById('task-id').value;
+      const id = document.getElementById('task-id').value || currentTaskId;
       if (confirm('Delete this task?')) {
         tasks = tasks.filter(t => t.id !== id);
         await removeTask(id);
@@ -354,6 +457,11 @@
     // Close modal on outside click
     document.getElementById('modal').addEventListener('click', e => {
       if (e.target.id === 'modal') closeModal();
+    });
+
+    // Keyboard shortcut
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closeModal();
     });
 
     // Initial load
