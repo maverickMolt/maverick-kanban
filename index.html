@@ -7,13 +7,19 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #c9d1d9; min-height: 100vh; }
-    .header { background: #161b22; padding: 1rem 2rem; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; }
+    .header { background: #161b22; padding: 1rem 2rem; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; }
     .header h1 { font-size: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
-    .header h1 span { font-size: 1.5rem; }
+    .header-actions { display: flex; gap: 0.5rem; align-items: center; }
+    .sync-status { font-size: 0.8rem; color: #8b949e; }
+    .sync-status.syncing { color: #d29922; }
+    .sync-status.error { color: #f85149; }
+    .sync-status.synced { color: #3fb950; }
     .add-btn { background: #238636; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.9rem; }
     .add-btn:hover { background: #2ea043; }
+    .refresh-btn { background: #30363d; color: #c9d1d9; border: none; padding: 0.5rem 0.75rem; border-radius: 6px; cursor: pointer; }
+    .refresh-btn:hover { background: #484f58; }
     .board { display: flex; gap: 1rem; padding: 1.5rem; overflow-x: auto; min-height: calc(100vh - 60px); }
-    .column { background: #161b22; border-radius: 8px; min-width: 300px; max-width: 300px; display: flex; flex-direction: column; }
+    .column { background: #161b22; border-radius: 8px; min-width: 280px; max-width: 280px; display: flex; flex-direction: column; }
     .column-header { padding: 1rem; font-weight: 600; border-bottom: 1px solid #30363d; display: flex; justify-content: space-between; align-items: center; }
     .column-header .count { background: #30363d; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.8rem; }
     .tasks { padding: 0.5rem; flex: 1; min-height: 100px; }
@@ -26,9 +32,6 @@
     .priority-high { background: #f85149; color: white; }
     .priority-medium { background: #d29922; color: white; }
     .priority-low { background: #388bfd; color: white; }
-    .task-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
-    .task-actions button { background: none; border: none; color: #8b949e; cursor: pointer; font-size: 0.75rem; }
-    .task-actions button:hover { color: #c9d1d9; }
     .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 100; }
     .modal.active { display: flex; }
     .modal-content { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 1.5rem; width: 90%; max-width: 400px; }
@@ -47,12 +50,20 @@
     .assignee { display: inline-flex; align-items: center; gap: 0.25rem; }
     .assignee.matt { color: #a371f7; }
     .assignee.maverick { color: #58a6ff; }
+    @media (max-width: 600px) {
+      .column { min-width: 260px; max-width: 260px; }
+      .header { padding: 1rem; }
+    }
   </style>
 </head>
 <body>
   <div class="header">
     <h1><span>🦅</span> Maverick Kanban</h1>
-    <button class="add-btn" onclick="openModal()">+ Add Task</button>
+    <div class="header-actions">
+      <span class="sync-status" id="sync-status">●  Connecting...</span>
+      <button class="refresh-btn" onclick="loadTasks()" title="Refresh">🔄</button>
+      <button class="add-btn" onclick="openModal()">+ Add Task</button>
+    </div>
   </div>
   
   <div class="board" id="board">
@@ -119,11 +130,100 @@
   </div>
 
   <script>
-    const STORAGE_KEY = 'maverick-kanban-tasks';
-    let tasks = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    const SUPABASE_URL = 'https://npnqnsjmcyzkpoqynadr.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbnFuc2ptY3l6a3BvcXluYWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MjcxMDcsImV4cCI6MjA4NTMwMzEwN30.unckvGv1xozWSGGt5adOFKgffzZtyGNn5j_tsCm72WU';
+    
+    let tasks = [];
 
-    function saveTasks() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    function setStatus(status, text) {
+      const el = document.getElementById('sync-status');
+      el.className = 'sync-status ' + status;
+      el.textContent = '● ' + text;
+    }
+
+    async function api(method, path, body = null) {
+      const opts = {
+        method,
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': method === 'POST' ? 'return=representation' : undefined
+        }
+      };
+      if (body) opts.body = JSON.stringify(body);
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, opts);
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const text = await res.text();
+      return text ? JSON.parse(text) : null;
+    }
+
+    async function loadTasks() {
+      setStatus('syncing', 'Syncing...');
+      try {
+        const data = await api('GET', 'kanban_tasks?select=*&order=created_at.asc');
+        tasks = data.map(t => ({
+          id: t.id,
+          title: t.title,
+          desc: t.description,
+          assignee: t.assignee,
+          priority: t.priority,
+          status: t.status
+        }));
+        render();
+        setStatus('synced', 'Synced');
+      } catch (e) {
+        console.error(e);
+        setStatus('error', 'Sync failed');
+      }
+    }
+
+    async function createTask(task) {
+      setStatus('syncing', 'Saving...');
+      try {
+        const res = await api('POST', 'kanban_tasks', {
+          id: task.id,
+          title: task.title,
+          description: task.desc,
+          assignee: task.assignee,
+          priority: task.priority,
+          status: task.status
+        });
+        setStatus('synced', 'Synced');
+        return res;
+      } catch (e) {
+        console.error(e);
+        setStatus('error', 'Save failed');
+      }
+    }
+
+    async function updateTask(task) {
+      setStatus('syncing', 'Saving...');
+      try {
+        await api('PATCH', `kanban_tasks?id=eq.${task.id}`, {
+          title: task.title,
+          description: task.desc,
+          assignee: task.assignee,
+          priority: task.priority,
+          status: task.status,
+          updated_at: new Date().toISOString()
+        });
+        setStatus('synced', 'Synced');
+      } catch (e) {
+        console.error(e);
+        setStatus('error', 'Save failed');
+      }
+    }
+
+    async function removeTask(id) {
+      setStatus('syncing', 'Deleting...');
+      try {
+        await api('DELETE', `kanban_tasks?id=eq.${id}`);
+        setStatus('synced', 'Synced');
+      } catch (e) {
+        console.error(e);
+        setStatus('error', 'Delete failed');
+      }
     }
 
     function render() {
@@ -182,7 +282,7 @@
       openModal(id);
     }
 
-    function saveTask() {
+    async function saveTask() {
       const id = document.getElementById('task-id').value;
       const title = document.getElementById('task-title').value.trim();
       if (!title) return alert('Title required');
@@ -193,28 +293,27 @@
         desc: document.getElementById('task-desc').value.trim(),
         assignee: document.getElementById('task-assignee').value,
         priority: document.getElementById('task-priority').value,
-        status: document.getElementById('task-status').value,
-        updated: new Date().toISOString()
+        status: document.getElementById('task-status').value
       };
 
       if (id) {
         const idx = tasks.findIndex(t => t.id === id);
         tasks[idx] = { ...tasks[idx], ...taskData };
+        await updateTask(taskData);
       } else {
-        taskData.created = new Date().toISOString();
         tasks.push(taskData);
+        await createTask(taskData);
       }
 
-      saveTasks();
       render();
       closeModal();
     }
 
-    function deleteTask() {
+    async function deleteTask() {
       const id = document.getElementById('task-id').value;
       if (confirm('Delete this task?')) {
         tasks = tasks.filter(t => t.id !== id);
-        saveTasks();
+        await removeTask(id);
         render();
         closeModal();
       }
@@ -240,15 +339,14 @@
         zone.classList.add('over');
       });
       zone.addEventListener('dragleave', () => zone.classList.remove('over'));
-      zone.addEventListener('drop', e => {
+      zone.addEventListener('drop', async e => {
         e.preventDefault();
         const newStatus = zone.id.replace('tasks-', '');
         const task = tasks.find(t => t.id === draggedId);
-        if (task) {
+        if (task && task.status !== newStatus) {
           task.status = newStatus;
-          task.updated = new Date().toISOString();
-          saveTasks();
           render();
+          await updateTask(task);
         }
       });
     });
@@ -258,8 +356,11 @@
       if (e.target.id === 'modal') closeModal();
     });
 
-    // Initial render
-    render();
+    // Initial load
+    loadTasks();
+
+    // Auto-refresh every 30 seconds
+    setInterval(loadTasks, 30000);
   </script>
 </body>
 </html>
