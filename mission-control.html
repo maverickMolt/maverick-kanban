@@ -222,12 +222,39 @@
     /* Empty states */
     .empty-state { text-align: center; padding: 2rem; color: var(--text-secondary); font-size: 0.85rem; }
     
+    /* Mobile nav */
+    .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-secondary); border-top: 1px solid var(--border); padding: 0.5rem; z-index: 50; }
+    .mobile-nav-items { display: flex; justify-content: space-around; }
+    .mobile-nav-btn { background: none; border: none; color: var(--text-secondary); padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+    .mobile-nav-btn.active { color: var(--accent-blue); background: var(--bg-tertiary); }
+    .mobile-nav-btn span { font-size: 1.25rem; }
+    
     @media (max-width: 1100px) {
       .app { grid-template-columns: 220px 1fr 280px; }
     }
     @media (max-width: 900px) {
-      .app { grid-template-columns: 1fr; }
-      .sidebar, .right-panel { display: none; }
+      .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; height: calc(100vh - 60px); }
+      .header { padding: 0.5rem 1rem; }
+      .header h1 { font-size: 1rem; }
+      .sidebar { display: none; border: none; }
+      .sidebar.mobile-active { display: block; position: fixed; top: 50px; left: 0; right: 0; bottom: 60px; z-index: 40; overflow-y: auto; }
+      .right-panel { display: none; border: none; }
+      .right-panel.mobile-active { display: flex; position: fixed; top: 50px; left: 0; right: 0; bottom: 60px; z-index: 40; }
+      .main { padding: 0.75rem; }
+      .main.mobile-hidden { display: none; }
+      .kanban { gap: 0.75rem; }
+      .column { min-width: 220px; }
+      .mobile-nav { display: block; }
+      .modal-content { padding: 1rem; }
+      .form-row { flex-direction: column; gap: 0; }
+    }
+    @media (max-width: 480px) {
+      .column { min-width: 85vw; }
+      .task-card { padding: 0.5rem; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .stat-card .number { font-size: 1.25rem; }
+      .activity-filters { gap: 0.25rem; }
+      .filter-btn { padding: 0.2rem 0.4rem; font-size: 0.65rem; }
     }
   </style>
 </head>
@@ -330,6 +357,24 @@
       </div>
     </aside>
   </div>
+  
+  <!-- Mobile Navigation -->
+  <nav class="mobile-nav" id="mobile-nav">
+    <div class="mobile-nav-items">
+      <button class="mobile-nav-btn active" onclick="showMobileView('tasks')">
+        <span>📋</span>
+        Tasks
+      </button>
+      <button class="mobile-nav-btn" onclick="showMobileView('squad')">
+        <span>🦅</span>
+        Squad
+      </button>
+      <button class="mobile-nav-btn" onclick="showMobileView('activity')">
+        <span>📊</span>
+        Activity
+      </button>
+    </div>
+  </nav>
   
   <!-- Add Task Modal -->
   <div class="modal" id="modal">
@@ -767,6 +812,34 @@
     
     if (localStorage.getItem(AUTH_KEY) === 'true') {
       init();
+    }
+    
+    // Mobile navigation
+    function showMobileView(view) {
+      const sidebar = document.querySelector('.sidebar');
+      const main = document.querySelector('.main');
+      const rightPanel = document.querySelector('.right-panel');
+      const navBtns = document.querySelectorAll('.mobile-nav-btn');
+      
+      // Reset all
+      sidebar.classList.remove('mobile-active');
+      rightPanel.classList.remove('mobile-active');
+      main.classList.remove('mobile-hidden');
+      navBtns.forEach(btn => btn.classList.remove('active'));
+      
+      // Activate selected view
+      if (view === 'squad') {
+        sidebar.classList.add('mobile-active');
+        main.classList.add('mobile-hidden');
+        navBtns[1].classList.add('active');
+      } else if (view === 'activity') {
+        rightPanel.classList.add('mobile-active');
+        main.classList.add('mobile-hidden');
+        showPanel('activity');
+        navBtns[2].classList.add('active');
+      } else {
+        navBtns[0].classList.add('active');
+      }
     }
     
     setInterval(async () => {
