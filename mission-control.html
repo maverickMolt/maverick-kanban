@@ -160,6 +160,9 @@
     .detail-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
     .detail-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .detail-badges span { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: var(--bg-tertiary); }
+    .status-select { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); cursor: pointer; }
+    .status-select:hover { border-color: var(--accent-blue); }
+    .status-select:focus { outline: none; border-color: var(--accent-blue); }
     .detail-description { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem; font-size: 0.9rem; line-height: 1.5; }
     .detail-description h2 { font-size: 1rem; margin: 0.75rem 0 0.5rem; }
     .detail-description h2:first-child { margin-top: 0; }
@@ -432,8 +435,8 @@
         `).join('') || '<div class="empty-state">No tasks</div>';
       });
       
-      // Setup drag and drop
-      setupDragDrop();
+      // Setup drag and drop after rendering
+      setTimeout(setupDragDrop, 0);
     }
     
     function getAssigneeEmoji(assignee) {
@@ -485,7 +488,13 @@
           <div class="detail-badges">
             <span class="priority-${task.priority}">${task.priority}</span>
             <span>${getAssigneeEmoji(task.assignee)} ${task.assignee}</span>
-            <span>${task.status}</span>
+            <select class="status-select" onchange="changeTaskStatus('${task.id}', this.value)">
+              <option value="backlog" ${task.status === 'backlog' ? 'selected' : ''}>📋 Inbox</option>
+              <option value="todo" ${task.status === 'todo' ? 'selected' : ''}>📝 Assigned</option>
+              <option value="in-progress" ${task.status === 'in-progress' ? 'selected' : ''}>🔨 In Progress</option>
+              <option value="review" ${task.status === 'review' ? 'selected' : ''}>👀 Review</option>
+              <option value="done" ${task.status === 'done' ? 'selected' : ''}>✅ Done</option>
+            </select>
           </div>
         </div>
         <div class="detail-description">
@@ -637,11 +646,19 @@
         id: crypto.randomUUID(),
         action: `moved "${task?.title}" to ${newStatus}`,
         category: 'task',
-        source: 'Maverick'
+        source: 'Matt'
       });
       
       await loadTasks();
       await loadActivities();
+    }
+    
+    async function changeTaskStatus(taskId, newStatus) {
+      await updateTaskStatus(taskId, newStatus);
+      // Re-render the detail panel
+      if (selectedTaskId === taskId) {
+        await renderTaskDetail(taskId);
+      }
     }
     
     function timeAgo(dateStr) {
