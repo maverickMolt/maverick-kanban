@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mission Control</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --border: #30363d;
+      --text-primary: #c9d1d9;
+      --text-secondary: #8b949e;
+      --accent-blue: #58a6ff;
+      --accent-green: #3fb950;
+      --accent-yellow: #d29922;
+      --accent-red: #f85149;
+      --accent-purple: #a371f7;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+    
+    /* Layout */
+    .app { display: grid; grid-template-columns: 280px 1fr 320px; grid-template-rows: auto 1fr; height: 100vh; }
+    .header { grid-column: 1 / -1; background: var(--bg-secondary); padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
+    .header-actions { display: flex; gap: 0.5rem; align-items: center; }
+    .sync-status { font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--bg-tertiary); }
+    .sync-status.connected { color: var(--accent-green); }
+    .sync-status.error { color: var(--accent-red); }
+    
+    /* Sidebar - Agents */
+    .sidebar { background: var(--bg-secondary); border-right: 1px solid var(--border); padding: 1rem; overflow-y: auto; }
+    .sidebar h2 { font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
+    .agent-card { background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; margin-bottom: 0.5rem; }
+    .agent-card:hover { border-color: var(--accent-blue); }
+    .agent-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .agent-emoji { font-size: 1.25rem; }
+    .agent-name { font-weight: 600; }
+    .agent-role { font-size: 0.75rem; color: var(--text-secondary); }
+    .agent-status { display: inline-block; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem; text-transform: uppercase; }
+    .agent-status.idle { background: var(--bg-primary); color: var(--text-secondary); }
+    .agent-status.active { background: var(--accent-green); color: #000; }
+    .agent-status.blocked { background: var(--accent-red); color: #fff; }
+    .agent-task { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
+    
+    /* Main content - Tasks */
+    .main { overflow-y: auto; padding: 1rem; }
+    .main h2 { font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
+    .add-btn { background: var(--accent-green); color: #000; border: none; padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: 600; }
+    .add-btn:hover { opacity: 0.9; }
+    
+    /* Kanban columns */
+    .kanban { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
+    .column { background: var(--bg-secondary); border-radius: 8px; min-width: 260px; flex-shrink: 0; }
+    .column-header { padding: 0.75rem; font-weight: 600; font-size: 0.9rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .column-header .count { background: var(--bg-tertiary); padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.75rem; }
+    .tasks-list { padding: 0.5rem; min-height: 100px; }
+    
+    .task-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem; margin-bottom: 0.5rem; cursor: pointer; transition: border-color 0.15s; }
+    .task-card:hover { border-color: var(--accent-blue); }
+    .task-card.selected { border-color: var(--accent-blue); box-shadow: 0 0 0 1px var(--accent-blue); }
+    .task-title { font-weight: 500; font-size: 0.9rem; margin-bottom: 0.25rem; }
+    .task-meta { font-size: 0.7rem; color: var(--text-secondary); display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .task-meta .priority { padding: 0.1rem 0.3rem; border-radius: 3px; }
+    .priority-high { background: var(--accent-red); color: #fff; }
+    .priority-medium { background: var(--accent-yellow); color: #000; }
+    .priority-low { background: var(--accent-blue); color: #fff; }
+    .task-assignee { display: flex; align-items: center; gap: 0.25rem; }
+    .task-comments { color: var(--accent-blue); }
+    
+    /* Right panel - Activity & Detail */
+    .right-panel { background: var(--bg-secondary); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+    .panel-tabs { display: flex; border-bottom: 1px solid var(--border); }
+    .panel-tab { flex: 1; padding: 0.75rem; text-align: center; font-size: 0.85rem; cursor: pointer; border-bottom: 2px solid transparent; }
+    .panel-tab:hover { background: var(--bg-tertiary); }
+    .panel-tab.active { border-bottom-color: var(--accent-blue); color: var(--accent-blue); }
+    .panel-content { flex: 1; overflow-y: auto; padding: 1rem; }
+    
+    /* Activity Feed */
+    .activity-item { display: flex; gap: 0.75rem; padding: 0.75rem 0; border-bottom: 1px solid var(--border); }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-emoji { font-size: 1.25rem; }
+    .activity-body { flex: 1; }
+    .activity-text { font-size: 0.85rem; line-height: 1.4; }
+    .activity-text strong { color: var(--text-primary); }
+    .activity-time { font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem; }
+    
+    /* Task Detail */
+    .detail-header { margin-bottom: 1rem; }
+    .detail-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .detail-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .detail-badges span { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: var(--bg-tertiary); }
+    .detail-description { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem; font-size: 0.9rem; line-height: 1.5; }
+    .detail-description h2 { font-size: 1rem; margin: 0.75rem 0 0.5rem; }
+    .detail-description h2:first-child { margin-top: 0; }
+    .detail-description ul, .detail-description ol { margin-left: 1.25rem; }
+    
+    /* Comments */
+    .comments-section h3 { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem; }
+    .comment { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.5rem; }
+    .comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .comment-author { font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 0.35rem; }
+    .comment-time { font-size: 0.7rem; color: var(--text-secondary); }
+    .comment-body { font-size: 0.85rem; line-height: 1.4; }
+    
+    .comment-input { display: flex; gap: 0.5rem; margin-top: 1rem; }
+    .comment-input input { flex: 1; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; color: var(--text-primary); font-size: 0.85rem; }
+    .comment-input button { background: var(--accent-blue); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+    
+    /* Modal */
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 100; }
+    .modal.active { display: flex; }
+    .modal-content { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; width: 90%; max-width: 500px; }
+    .modal-content h2 { margin-bottom: 1rem; }
+    .form-group { margin-bottom: 1rem; }
+    .form-group label { display: block; margin-bottom: 0.25rem; font-size: 0.85rem; color: var(--text-secondary); }
+    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.5rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); font-size: 0.9rem; }
+    .form-group textarea { min-height: 150px; resize: vertical; font-family: inherit; }
+    .form-row { display: flex; gap: 1rem; }
+    .form-row .form-group { flex: 1; }
+    .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+    .modal-actions button { padding: 0.5rem 1rem; border-radius: 4px; border: none; cursor: pointer; }
+    .btn-cancel { background: var(--bg-tertiary); color: var(--text-primary); }
+    .btn-save { background: var(--accent-green); color: #000; }
+    
+    /* Empty states */
+    .empty-state { text-align: center; padding: 2rem; color: var(--text-secondary); font-size: 0.85rem; }
+    
+    @media (max-width: 900px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar, .right-panel { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="header">
+      <h1>🎯 Mission Control</h1>
+      <div class="header-actions">
+        <span class="sync-status connected" id="sync-status">● Connected</span>
+      </div>
+    </header>
+    
+    <!-- Sidebar: Agents -->
+    <aside class="sidebar">
+      <h2>Squad</h2>
+      <div id="agents-list"></div>
+    </aside>
+    
+    <!-- Main: Kanban -->
+    <main class="main">
+      <h2>Tasks <button class="add-btn" onclick="openModal()">+ New Task</button></h2>
+      <div class="kanban" id="kanban">
+        <div class="column" data-status="backlog">
+          <div class="column-header">📋 Inbox <span class="count" id="count-backlog">0</span></div>
+          <div class="tasks-list" id="tasks-backlog"></div>
+        </div>
+        <div class="column" data-status="todo">
+          <div class="column-header">📝 Assigned <span class="count" id="count-todo">0</span></div>
+          <div class="tasks-list" id="tasks-todo"></div>
+        </div>
+        <div class="column" data-status="in-progress">
+          <div class="column-header">🔨 In Progress <span class="count" id="count-in-progress">0</span></div>
+          <div class="tasks-list" id="tasks-in-progress"></div>
+        </div>
+        <div class="column" data-status="review">
+          <div class="column-header">👀 Review <span class="count" id="count-review">0</span></div>
+          <div class="tasks-list" id="tasks-review"></div>
+        </div>
+        <div class="column" data-status="done">
+          <div class="column-header">✅ Done <span class="count" id="count-done">0</span></div>
+          <div class="tasks-list" id="tasks-done"></div>
+        </div>
+      </div>
+    </main>
+    
+    <!-- Right Panel: Activity & Detail -->
+    <aside class="right-panel">
+      <div class="panel-tabs">
+        <div class="panel-tab active" onclick="showPanel('activity')">Activity</div>
+        <div class="panel-tab" onclick="showPanel('detail')">Detail</div>
+      </div>
+      <div class="panel-content" id="panel-content">
+        <div id="activity-panel">
+          <div id="activity-feed"></div>
+        </div>
+        <div id="detail-panel" style="display:none;">
+          <div class="empty-state">Select a task to view details</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+  
+  <!-- Add Task Modal -->
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <h2>New Task</h2>
+      <div class="form-group">
+        <label>Title</label>
+        <input type="text" id="task-title" placeholder="What needs to be done?">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="task-desc" placeholder="Add details, context, or requirements..."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Assignee</label>
+          <select id="task-assignee">
+            <option value="maverick">🦅 Maverick</option>
+            <option value="scout">🔍 Scout</option>
+            <option value="matt">👤 Matt</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Priority</label>
+          <select id="task-priority">
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button class="btn-save" onclick="saveTask()">Create Task</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://npnqnsjmcyzkpoqynadr.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbnFuc2ptY3l6a3BvcXluYWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MjcxMDcsImV4cCI6MjA4NTMwMzEwN30.unckvGv1xozWSGGt5adOFKgffzZtyGNn5j_tsCm72WU';
+    
+    let tasks = [];
+    let agents = [];
+    let activities = [];
+    let messages = [];
+    let selectedTaskId = null;
+    
+    async function api(method, endpoint, body = null) {
+      const opts = {
+        method,
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=representation'
+        }
+      };
+      if (body) opts.body = JSON.stringify(body);
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, opts);
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const text = await res.text();
+      return text ? JSON.parse(text) : null;
+    }
+    
+    async function loadAgents() {
+      agents = await api('GET', 'agents?select=*&order=created_at.asc');
+      renderAgents();
+    }
+    
+    async function loadTasks() {
+      tasks = await api('GET', 'kanban_tasks?select=*&order=created_at.asc');
+      renderKanban();
+    }
+    
+    async function loadActivities() {
+      activities = await api('GET', 'activity_log?select=*&order=created_at.desc&limit=50');
+      renderActivityFeed();
+    }
+    
+    async function loadMessages(taskId) {
+      if (!taskId) return [];
+      return await api('GET', `messages?task_id=eq.${taskId}&select=*,agents(name,emoji)&order=created_at.asc`);
+    }
+    
+    function renderAgents() {
+      const container = document.getElementById('agents-list');
+      container.innerHTML = agents.map(a => `
+        <div class="agent-card">
+          <div class="agent-header">
+            <span class="agent-emoji">${a.emoji}</span>
+            <div>
+              <div class="agent-name">${a.name}</div>
+              <div class="agent-role">${a.role}</div>
+            </div>
+          </div>
+          <span class="agent-status ${a.status}">${a.status}</span>
+        </div>
+      `).join('');
+    }
+    
+    function renderKanban() {
+      const statuses = ['backlog', 'todo', 'in-progress', 'review', 'done'];
+      statuses.forEach(status => {
+        const container = document.getElementById(`tasks-${status}`);
+        const statusTasks = tasks.filter(t => t.status === status);
+        document.getElementById(`count-${status}`).textContent = statusTasks.length;
+        
+        container.innerHTML = statusTasks.map(t => `
+          <div class="task-card ${selectedTaskId === t.id ? 'selected' : ''}" onclick="selectTask('${t.id}')" draggable="true" data-id="${t.id}">
+            <div class="task-title">${escapeHtml(t.title)}</div>
+            <div class="task-meta">
+              <span class="priority priority-${t.priority}">${t.priority}</span>
+              <span class="task-assignee">${getAssigneeEmoji(t.assignee)} ${t.assignee}</span>
+            </div>
+          </div>
+        `).join('') || '<div class="empty-state">No tasks</div>';
+      });
+      
+      // Setup drag and drop
+      setupDragDrop();
+    }
+    
+    function getAssigneeEmoji(assignee) {
+      if (assignee === 'maverick') return '🦅';
+      if (assignee === 'scout') return '🔍';
+      return '👤';
+    }
+    
+    function renderActivityFeed() {
+      const container = document.getElementById('activity-feed');
+      if (!activities.length) {
+        container.innerHTML = '<div class="empty-state">No recent activity</div>';
+        return;
+      }
+      
+      container.innerHTML = activities.map(a => `
+        <div class="activity-item">
+          <span class="activity-emoji">${getActivityEmoji(a.category)}</span>
+          <div class="activity-body">
+            <div class="activity-text"><strong>${a.source || 'System'}</strong> ${escapeHtml(a.action)}</div>
+            <div class="activity-time">${timeAgo(a.created_at)}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    function getActivityEmoji(category) {
+      const map = { task: '📋', build: '🔨', social: '💬', system: '⚙️', cron: '⏰' };
+      return map[category] || '📌';
+    }
+    
+    async function selectTask(id) {
+      selectedTaskId = id;
+      renderKanban();
+      showPanel('detail');
+      await renderTaskDetail(id);
+    }
+    
+    async function renderTaskDetail(id) {
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+      
+      const msgs = await loadMessages(id);
+      const detailPanel = document.getElementById('detail-panel');
+      
+      detailPanel.innerHTML = `
+        <div class="detail-header">
+          <div class="detail-title">${escapeHtml(task.title)}</div>
+          <div class="detail-badges">
+            <span class="priority-${task.priority}">${task.priority}</span>
+            <span>${getAssigneeEmoji(task.assignee)} ${task.assignee}</span>
+            <span>${task.status}</span>
+          </div>
+        </div>
+        <div class="detail-description">
+          ${task.description ? marked.parse(task.description) : '<em>No description</em>'}
+        </div>
+        <div class="comments-section">
+          <h3>Comments (${msgs.length})</h3>
+          <div id="comments-list">
+            ${msgs.map(m => `
+              <div class="comment">
+                <div class="comment-header">
+                  <span class="comment-author">${m.agents?.emoji || '👤'} ${m.agents?.name || m.from_user || 'Unknown'}</span>
+                  <span class="comment-time">${timeAgo(m.created_at)}</span>
+                </div>
+                <div class="comment-body">${escapeHtml(m.content)}</div>
+              </div>
+            `).join('') || '<div class="empty-state">No comments yet</div>'}
+          </div>
+          <div class="comment-input">
+            <input type="text" id="comment-text" placeholder="Add a comment... (use @agent to mention)">
+            <button onclick="postComment('${id}')">Send</button>
+          </div>
+        </div>
+      `;
+    }
+    
+    async function postComment(taskId) {
+      const input = document.getElementById('comment-text');
+      const content = input.value.trim();
+      if (!content) return;
+      
+      // Find Maverick's agent ID
+      const maverick = agents.find(a => a.name === 'Maverick');
+      
+      await api('POST', 'messages', {
+        task_id: taskId,
+        from_agent_id: maverick?.id,
+        content: content
+      });
+      
+      // Log activity
+      await api('POST', 'activity_log', {
+        id: crypto.randomUUID(),
+        action: `commented on task`,
+        category: 'task',
+        source: 'Maverick'
+      });
+      
+      input.value = '';
+      await renderTaskDetail(taskId);
+      await loadActivities();
+    }
+    
+    function showPanel(panel) {
+      document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+      document.querySelector(`.panel-tab:${panel === 'activity' ? 'first-child' : 'last-child'}`).classList.add('active');
+      document.getElementById('activity-panel').style.display = panel === 'activity' ? 'block' : 'none';
+      document.getElementById('detail-panel').style.display = panel === 'detail' ? 'block' : 'none';
+    }
+    
+    function openModal() {
+      document.getElementById('modal').classList.add('active');
+      document.getElementById('task-title').value = '';
+      document.getElementById('task-desc').value = '';
+      document.getElementById('task-assignee').value = 'maverick';
+      document.getElementById('task-priority').value = 'medium';
+    }
+    
+    function closeModal() {
+      document.getElementById('modal').classList.remove('active');
+    }
+    
+    async function saveTask() {
+      const title = document.getElementById('task-title').value.trim();
+      if (!title) return alert('Title required');
+      
+      const task = {
+        id: crypto.randomUUID(),
+        title,
+        description: document.getElementById('task-desc').value,
+        assignee: document.getElementById('task-assignee').value,
+        priority: document.getElementById('task-priority').value,
+        status: 'backlog'
+      };
+      
+      await api('POST', 'kanban_tasks', task);
+      
+      // Log activity
+      await api('POST', 'activity_log', {
+        id: crypto.randomUUID(),
+        action: `created task "${title}"`,
+        category: 'task',
+        source: 'Matt'
+      });
+      
+      closeModal();
+      await loadTasks();
+      await loadActivities();
+    }
+    
+    function setupDragDrop() {
+      document.querySelectorAll('.task-card').forEach(card => {
+        card.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('text/plain', card.dataset.id);
+          card.classList.add('dragging');
+        });
+        card.addEventListener('dragend', () => card.classList.remove('dragging'));
+      });
+      
+      document.querySelectorAll('.tasks-list').forEach(list => {
+        list.addEventListener('dragover', e => {
+          e.preventDefault();
+          list.classList.add('drop-zone');
+        });
+        list.addEventListener('dragleave', () => list.classList.remove('drop-zone'));
+        list.addEventListener('drop', async e => {
+          e.preventDefault();
+          list.classList.remove('drop-zone');
+          const taskId = e.dataTransfer.getData('text/plain');
+          const newStatus = list.id.replace('tasks-', '');
+          await updateTaskStatus(taskId, newStatus);
+        });
+      });
+    }
+    
+    async function updateTaskStatus(taskId, newStatus) {
+      await api('PATCH', `kanban_tasks?id=eq.${taskId}`, { status: newStatus, updated_at: new Date().toISOString() });
+      
+      const task = tasks.find(t => t.id === taskId);
+      await api('POST', 'activity_log', {
+        id: crypto.randomUUID(),
+        action: `moved "${task?.title}" to ${newStatus}`,
+        category: 'task',
+        source: 'Maverick'
+      });
+      
+      await loadTasks();
+      await loadActivities();
+    }
+    
+    function timeAgo(dateStr) {
+      const now = new Date();
+      const date = new Date(dateStr);
+      const seconds = Math.floor((now - date) / 1000);
+      
+      if (seconds < 60) return 'just now';
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+      if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+      return `${Math.floor(seconds / 86400)}d ago`;
+    }
+    
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    
+    // Initialize
+    async function init() {
+      try {
+        await Promise.all([loadAgents(), loadTasks(), loadActivities()]);
+        document.getElementById('sync-status').textContent = '● Connected';
+        document.getElementById('sync-status').className = 'sync-status connected';
+      } catch (e) {
+        console.error(e);
+        document.getElementById('sync-status').textContent = '● Error';
+        document.getElementById('sync-status').className = 'sync-status error';
+      }
+    }
+    
+    init();
+    
+    // Poll for updates every 30s
+    setInterval(async () => {
+      await Promise.all([loadAgents(), loadTasks(), loadActivities()]);
+    }, 30000);
+  </script>
+</body>
+</html>
