@@ -98,7 +98,7 @@
     .sync-status.connected { color: var(--accent-green); }
     .sync-status.error { color: var(--accent-red); }
     
-    /* Sidebar - Agents */
+    /* Sidebar - Agents & Stats */
     .sidebar { background: var(--bg-secondary); border-right: 1px solid var(--border); padding: 1rem; overflow-y: auto; }
     .sidebar h2 { font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
     .agent-card { background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; margin-bottom: 0.5rem; }
@@ -112,6 +112,16 @@
     .agent-status.active { background: var(--accent-green); color: #000; }
     .agent-status.blocked { background: var(--accent-red); color: #fff; }
     .agent-task { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
+    
+    /* Stats Section */
+    .stats-section { margin-top: 1.5rem; }
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
+    .stat-card { background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; text-align: center; }
+    .stat-card .number { font-size: 1.5rem; font-weight: bold; color: var(--accent-blue); }
+    .stat-card .label { font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.15rem; }
+    .stat-card.tasks .number { color: var(--accent-green); }
+    .stat-card.content .number { color: var(--accent-red); }
+    .stat-card.social .number { color: var(--accent-purple); }
     
     /* Main content - Tasks */
     .main { overflow-y: auto; padding: 1rem; }
@@ -129,6 +139,7 @@
     .task-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem; margin-bottom: 0.5rem; cursor: pointer; transition: border-color 0.15s; }
     .task-card:hover { border-color: var(--accent-blue); }
     .task-card.selected { border-color: var(--accent-blue); box-shadow: 0 0 0 1px var(--accent-blue); }
+    .task-card.dragging { opacity: 0.5; }
     .task-title { font-weight: 500; font-size: 0.9rem; margin-bottom: 0.25rem; }
     .task-meta { font-size: 0.7rem; color: var(--text-secondary); display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .task-meta .priority { padding: 0.1rem 0.3rem; border-radius: 3px; }
@@ -137,6 +148,7 @@
     .priority-low { background: var(--accent-blue); color: #fff; }
     .task-assignee { display: flex; align-items: center; gap: 0.25rem; }
     .task-comments { color: var(--accent-blue); }
+    .tasks-list.drop-zone { background: var(--bg-tertiary); }
     
     /* Right panel - Activity & Detail */
     .right-panel { background: var(--bg-secondary); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
@@ -146,14 +158,25 @@
     .panel-tab.active { border-bottom-color: var(--accent-blue); color: var(--accent-blue); }
     .panel-content { flex: 1; overflow-y: auto; padding: 1rem; }
     
+    /* Activity Filters */
+    .activity-filters { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.75rem; }
+    .filter-btn { background: var(--bg-tertiary); color: var(--text-secondary); border: none; padding: 0.25rem 0.5rem; border-radius: 12px; cursor: pointer; font-size: 0.7rem; }
+    .filter-btn:hover { background: var(--border); color: var(--text-primary); }
+    .filter-btn.active { background: var(--accent-blue); color: #000; }
+    
     /* Activity Feed */
     .activity-item { display: flex; gap: 0.75rem; padding: 0.75rem 0; border-bottom: 1px solid var(--border); }
     .activity-item:last-child { border-bottom: none; }
-    .activity-emoji { font-size: 1.25rem; }
-    .activity-body { flex: 1; }
+    .activity-emoji { font-size: 1.25rem; flex-shrink: 0; }
+    .activity-body { flex: 1; min-width: 0; }
     .activity-text { font-size: 0.85rem; line-height: 1.4; }
     .activity-text strong { color: var(--text-primary); }
+    .activity-text a { color: var(--accent-blue); text-decoration: none; }
+    .activity-text a:hover { text-decoration: underline; }
     .activity-time { font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem; }
+    .activity-desc { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; word-break: break-word; }
+    .activity-desc a { color: var(--accent-blue); text-decoration: none; }
+    .activity-desc a:hover { text-decoration: underline; }
     
     /* Task Detail */
     .detail-header { margin-bottom: 1rem; }
@@ -199,6 +222,9 @@
     /* Empty states */
     .empty-state { text-align: center; padding: 2rem; color: var(--text-secondary); font-size: 0.85rem; }
     
+    @media (max-width: 1100px) {
+      .app { grid-template-columns: 220px 1fr 280px; }
+    }
     @media (max-width: 900px) {
       .app { grid-template-columns: 1fr; }
       .sidebar, .right-panel { display: none; }
@@ -225,10 +251,32 @@
       </div>
     </header>
     
-    <!-- Sidebar: Agents -->
+    <!-- Sidebar: Agents & Stats -->
     <aside class="sidebar">
       <h2>Squad</h2>
       <div id="agents-list"></div>
+      
+      <div class="stats-section">
+        <h2>Stats</h2>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="number" id="stat-total">-</div>
+            <div class="label">Total Actions</div>
+          </div>
+          <div class="stat-card tasks">
+            <div class="number" id="stat-tasks">-</div>
+            <div class="label">Tasks</div>
+          </div>
+          <div class="stat-card content">
+            <div class="number" id="stat-content">-</div>
+            <div class="label">Content</div>
+          </div>
+          <div class="stat-card social">
+            <div class="number" id="stat-social">-</div>
+            <div class="label">Social</div>
+          </div>
+        </div>
+      </div>
     </aside>
     
     <!-- Main: Kanban -->
@@ -266,6 +314,14 @@
       </div>
       <div class="panel-content" id="panel-content">
         <div id="activity-panel">
+          <div class="activity-filters">
+            <button class="filter-btn active" data-filter="all" onclick="setActivityFilter('all')">All</button>
+            <button class="filter-btn" data-filter="task" onclick="setActivityFilter('task')">📋 Tasks</button>
+            <button class="filter-btn" data-filter="content" onclick="setActivityFilter('content')">📝 Content</button>
+            <button class="filter-btn" data-filter="social" onclick="setActivityFilter('social')">💬 Social</button>
+            <button class="filter-btn" data-filter="build" onclick="setActivityFilter('build')">🔨 Build</button>
+            <button class="filter-btn" data-filter="documentation" onclick="setActivityFilter('documentation')">📄 Docs</button>
+          </div>
           <div id="activity-feed"></div>
         </div>
         <div id="detail-panel" style="display:none;">
@@ -313,25 +369,11 @@
   </div>
 
   <script>
-    // Simple client-side auth (hash-based, not for high security)
-    // Password: maverick2026 → SHA256 hash
-    const AUTH_HASH = '8a9bcf4e7d3b2c1a5f6e8d9c0b1a2f3e4d5c6b7a8e9f0d1c2b3a4f5e6d7c8b9a';
+    // Auth
     const AUTH_KEY = 'mc_authenticated';
-    
-    function hashPassword(pwd) {
-      // Simple hash for client-side (not cryptographically secure, but good enough for basic protection)
-      let hash = 0;
-      for (let i = 0; i < pwd.length; i++) {
-        const char = pwd.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-      }
-      return Math.abs(hash).toString(16);
-    }
     
     function checkAuth() {
       const pwd = document.getElementById('auth-password').value;
-      // Accept password "maverick2026" or any password Matt sets
       if (pwd === 'maverick2026' || pwd === 'stericube' || localStorage.getItem(AUTH_KEY) === 'true') {
         localStorage.setItem(AUTH_KEY, 'true');
         document.getElementById('auth-overlay').classList.add('hidden');
@@ -343,18 +385,17 @@
       }
     }
     
-    // Check if already authenticated
     if (localStorage.getItem(AUTH_KEY) === 'true') {
       document.getElementById('auth-overlay').classList.add('hidden');
       document.getElementById('main-app').style.display = 'grid';
     }
     
-    // Logout function (call from console: logout())
     function logout() {
       localStorage.removeItem(AUTH_KEY);
       location.reload();
     }
     
+    // Supabase config
     const SUPABASE_URL = 'https://npnqnsjmcyzkpoqynadr.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbnFuc2ptY3l6a3BvcXluYWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MjcxMDcsImV4cCI6MjA4NTMwMzEwN30.unckvGv1xozWSGGt5adOFKgffzZtyGNn5j_tsCm72WU';
     
@@ -363,6 +404,7 @@
     let activities = [];
     let messages = [];
     let selectedTaskId = null;
+    let activityFilter = 'all';
     
     async function api(method, endpoint, body = null) {
       const opts = {
@@ -392,13 +434,21 @@
     }
     
     async function loadActivities() {
-      activities = await api('GET', 'activity_log?select=*&order=created_at.desc&limit=50');
+      activities = await api('GET', 'activity_log?select=*&order=created_at.desc&limit=100');
+      updateStats();
       renderActivityFeed();
     }
     
     async function loadMessages(taskId) {
       if (!taskId) return [];
       return await api('GET', `messages?task_id=eq.${taskId}&select=*,agents(name,emoji)&order=created_at.asc`);
+    }
+    
+    function updateStats() {
+      document.getElementById('stat-total').textContent = activities.length;
+      document.getElementById('stat-tasks').textContent = activities.filter(a => a.category === 'task').length;
+      document.getElementById('stat-content').textContent = activities.filter(a => a.category === 'content').length;
+      document.getElementById('stat-social').textContent = activities.filter(a => a.category === 'social').length;
     }
     
     function renderAgents() {
@@ -435,7 +485,6 @@
         `).join('') || '<div class="empty-state">No tasks</div>';
       });
       
-      // Setup drag and drop after rendering
       setTimeout(setupDragDrop, 0);
     }
     
@@ -445,27 +494,55 @@
       return '👤';
     }
     
+    const activityIcons = {
+      system: '⚙️',
+      task: '📋',
+      build: '🔨',
+      cron: '⏰',
+      social: '💬',
+      content: '📝',
+      documentation: '📄',
+      general: '📌'
+    };
+    
+    function setActivityFilter(filter) {
+      activityFilter = filter;
+      document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.filter === filter);
+      });
+      renderActivityFeed();
+    }
+    
+    function linkifyText(text) {
+      if (!text) return '';
+      let escaped = escapeHtml(text);
+      const urlRegex = /(https?:\/\/[^\s|]+)/g;
+      escaped = escaped.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener">View →</a>');
+      escaped = escaped.replace(' | <a ', ' <a ');
+      return escaped;
+    }
+    
     function renderActivityFeed() {
       const container = document.getElementById('activity-feed');
-      if (!activities.length) {
-        container.innerHTML = '<div class="empty-state">No recent activity</div>';
+      const filtered = activityFilter === 'all' 
+        ? activities 
+        : activities.filter(a => a.category === activityFilter);
+      
+      if (!filtered.length) {
+        container.innerHTML = '<div class="empty-state">No activity yet</div>';
         return;
       }
       
-      container.innerHTML = activities.map(a => `
+      container.innerHTML = filtered.map(a => `
         <div class="activity-item">
-          <span class="activity-emoji">${getActivityEmoji(a.category)}</span>
+          <span class="activity-emoji">${activityIcons[a.category] || '📌'}</span>
           <div class="activity-body">
-            <div class="activity-text"><strong>${a.source || 'System'}</strong> ${escapeHtml(a.action)}</div>
+            <div class="activity-text"><strong>${escapeHtml(a.source || 'System')}</strong> ${escapeHtml(a.action)}</div>
+            ${a.description ? `<div class="activity-desc">${linkifyText(a.description)}</div>` : ''}
             <div class="activity-time">${timeAgo(a.created_at)}</div>
           </div>
         </div>
       `).join('');
-    }
-    
-    function getActivityEmoji(category) {
-      const map = { task: '📋', build: '🔨', social: '💬', system: '⚙️', cron: '⏰' };
-      return map[category] || '📌';
     }
     
     async function selectTask(id) {
@@ -526,17 +603,14 @@
       const content = input.value.trim();
       if (!content) return;
       
-      // Determine who is commenting (default to Matt for UI)
       const fromUser = 'Matt';
       
-      // Create the message
       const msg = await api('POST', 'messages', {
         task_id: taskId,
         from_user: fromUser,
         content: content
       });
       
-      // Parse @mentions and create notifications
       const mentions = content.match(/@(\w+)/g) || [];
       const task = tasks.find(t => t.id === taskId);
       
@@ -553,7 +627,6 @@
         }
       }
       
-      // Log activity
       await api('POST', 'activity_log', {
         id: crypto.randomUUID(),
         action: `commented on "${task?.title}"`,
@@ -600,7 +673,6 @@
       
       await api('POST', 'kanban_tasks', task);
       
-      // Log activity
       await api('POST', 'activity_log', {
         id: crypto.randomUUID(),
         action: `created task "${title}"`,
@@ -655,7 +727,6 @@
     
     async function changeTaskStatus(taskId, newStatus) {
       await updateTaskStatus(taskId, newStatus);
-      // Re-render the detail panel
       if (selectedTaskId === taskId) {
         await renderTaskDetail(taskId);
       }
@@ -682,7 +753,6 @@
       return escapeHtml(str).replace(/@(\w+)/g, '<span style="color: var(--accent-blue); font-weight: 600;">@$1</span>');
     }
     
-    // Initialize
     async function init() {
       try {
         await Promise.all([loadAgents(), loadTasks(), loadActivities()]);
@@ -695,12 +765,10 @@
       }
     }
     
-    // Only init if already authenticated
     if (localStorage.getItem(AUTH_KEY) === 'true') {
       init();
     }
     
-    // Poll for updates every 30s
     setInterval(async () => {
       await Promise.all([loadAgents(), loadTasks(), loadActivities()]);
     }, 30000);
