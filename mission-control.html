@@ -380,7 +380,7 @@
                   <span class="comment-author">${m.agents?.emoji || '👤'} ${m.agents?.name || m.from_user || 'Unknown'}</span>
                   <span class="comment-time">${timeAgo(m.created_at)}</span>
                 </div>
-                <div class="comment-body">${escapeHtml(m.content)}</div>
+                <div class="comment-body">${highlightMentions(m.content)}</div>
               </div>
             `).join('') || '<div class="empty-state">No comments yet</div>'}
           </div>
@@ -397,21 +397,39 @@
       const content = input.value.trim();
       if (!content) return;
       
-      // Find Maverick's agent ID
-      const maverick = agents.find(a => a.name === 'Maverick');
+      // Determine who is commenting (default to Matt for UI)
+      const fromUser = 'Matt';
       
-      await api('POST', 'messages', {
+      // Create the message
+      const msg = await api('POST', 'messages', {
         task_id: taskId,
-        from_agent_id: maverick?.id,
+        from_user: fromUser,
         content: content
       });
+      
+      // Parse @mentions and create notifications
+      const mentions = content.match(/@(\w+)/g) || [];
+      const task = tasks.find(t => t.id === taskId);
+      
+      for (const mention of mentions) {
+        const agentName = mention.slice(1).toLowerCase();
+        const agent = agents.find(a => a.name.toLowerCase() === agentName);
+        
+        if (agent) {
+          await api('POST', 'notifications', {
+            mentioned_agent_id: agent.id,
+            source_message_id: msg[0]?.id,
+            content: `👤 ${fromUser} mentioned you on "${task?.title}": ${content}`
+          });
+        }
+      }
       
       // Log activity
       await api('POST', 'activity_log', {
         id: crypto.randomUUID(),
-        action: `commented on task`,
+        action: `commented on "${task?.title}"`,
         category: 'task',
-        source: 'Maverick'
+        source: fromUser
       });
       
       input.value = '';
@@ -520,6 +538,11 @@
     function escapeHtml(str) {
       if (!str) return '';
       return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+    
+    function highlightMentions(str) {
+      if (!str) return '';
+      return escapeHtml(str).replace(/@(\w+)/g, '<span style="color: var(--accent-blue); font-weight: 600;">@$1</span>');
     }
     
     // Initialize
