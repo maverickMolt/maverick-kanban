@@ -881,6 +881,17 @@
     setInterval(async () => {
       await Promise.all([loadAgents(), loadTasks(), loadActivities()]);
     }, 30000);
+    
+    // Expose functions for onclick handlers (required for ES modules)
+    window.showMobileView = showMobileView;
+    window.openModal = openModal;
+    window.closeModal = closeModal;
+    window.saveTask = saveTask;
+    window.selectTask = selectTask;
+    window.showPanel = showPanel;
+    window.setActivityFilter = setActivityFilter;
+    window.postComment = postComment;
+    window.changeTaskStatus = changeTaskStatus;
   </script>
 </body>
 </html>
