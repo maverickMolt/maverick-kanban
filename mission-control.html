@@ -487,11 +487,14 @@
     let activityFilter = 'all';
     
     async function api(method, endpoint, body = null) {
+      const { data: { session } } = await supabaseClient.auth.getSession();
+      const token = session?.access_token || SUPABASE_KEY;
+      
       const opts = {
         method,
         headers: {
           'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
           'Prefer': 'return=representation'
         }
