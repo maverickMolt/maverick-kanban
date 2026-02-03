@@ -421,8 +421,23 @@
     const SUPABASE_URL = 'https://npnqnsjmcyzkpoqynadr.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbnFuc2ptY3l6a3BvcXluYWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MjcxMDcsImV4cCI6MjA4NTMwMzEwN30.unckvGv1xozWSGGt5adOFKgffzZtyGNn5j_tsCm72WU';
     
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let supabase;
     let currentUser = null;
+    
+    // Initialize Supabase when library loads
+    function initSupabase() {
+      if (window.supabase) {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        checkSession();
+      } else {
+        console.error('Supabase library not loaded');
+        document.getElementById('auth-error').textContent = 'Failed to load authentication library';
+        document.getElementById('auth-error').classList.add('show');
+      }
+    }
+    
+    // Wait for page to fully load
+    window.addEventListener('load', initSupabase);
     
     async function signIn() {
       const email = document.getElementById('auth-email').value;
@@ -470,9 +485,6 @@
       await supabase.auth.signOut();
       location.reload();
     }
-    
-    // Check for existing session on load
-    checkSession();
     
     let tasks = [];
     let agents = [];
