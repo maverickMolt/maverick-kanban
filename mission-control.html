@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mission Control</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     /* Auth overlay */
@@ -416,28 +415,15 @@
     </div>
   </div>
 
-  <script>
+  <script type="module">
     // Supabase Auth
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+    
     const SUPABASE_URL = 'https://npnqnsjmcyzkpoqynadr.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbnFuc2ptY3l6a3BvcXluYWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MjcxMDcsImV4cCI6MjA4NTMwMzEwN30.unckvGv1xozWSGGt5adOFKgffzZtyGNn5j_tsCm72WU';
     
-    let supabaseClient;
+    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
     let currentUser = null;
-    
-    // Initialize Supabase when library loads
-    function initSupabase() {
-      if (window.supabase) {
-        supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        checkSession();
-      } else {
-        console.error('Supabase library not loaded');
-        document.getElementById('auth-error').textContent = 'Failed to load authentication library';
-        document.getElementById('auth-error').classList.add('show');
-      }
-    }
-    
-    // Wait for page to fully load
-    window.addEventListener('load', initSupabase);
     
     async function signIn() {
       const email = document.getElementById('auth-email').value;
@@ -485,6 +471,13 @@
       await supabaseClient.auth.signOut();
       location.reload();
     }
+    
+    // Make functions available globally for onclick handlers
+    window.signIn = signIn;
+    window.logout = logout;
+    
+    // Check session on load
+    checkSession();
     
     let tasks = [];
     let agents = [];
