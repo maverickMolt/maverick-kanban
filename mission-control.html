@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mission Control</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     /* Auth overlay */
@@ -427,19 +427,33 @@
     async function signIn() {
       const email = document.getElementById('auth-email').value;
       const password = document.getElementById('auth-password').value;
+      const errorEl = document.getElementById('auth-error');
       
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      
-      if (error) {
-        document.getElementById('auth-error').classList.add('show');
-        document.getElementById('auth-password').value = '';
+      if (!email || !password) {
+        errorEl.textContent = 'Please enter email and password';
+        errorEl.classList.add('show');
         return;
       }
       
-      currentUser = data.user;
-      document.getElementById('auth-overlay').classList.add('hidden');
-      document.getElementById('main-app').style.display = 'grid';
-      init();
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        
+        if (error) {
+          errorEl.textContent = error.message;
+          errorEl.classList.add('show');
+          document.getElementById('auth-password').value = '';
+          return;
+        }
+        
+        currentUser = data.user;
+        document.getElementById('auth-overlay').classList.add('hidden');
+        document.getElementById('main-app').style.display = 'grid';
+        init();
+      } catch (e) {
+        errorEl.textContent = 'Connection error: ' + e.message;
+        errorEl.classList.add('show');
+        console.error('Sign in error:', e);
+      }
     }
     
     async function checkSession() {
