@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mission Control</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     /* Auth overlay */
@@ -263,10 +264,11 @@
   <div class="auth-overlay" id="auth-overlay">
     <div class="auth-box">
       <h1>🎯 Mission Control</h1>
-      <p>Enter password to continue</p>
-      <input type="password" id="auth-password" placeholder="Password" onkeypress="if(event.key==='Enter')checkAuth()">
-      <button onclick="checkAuth()">Unlock</button>
-      <div class="auth-error" id="auth-error">Incorrect password</div>
+      <p>Sign in to continue</p>
+      <input type="email" id="auth-email" placeholder="Email" onkeypress="if(event.key==='Enter')document.getElementById('auth-password').focus()">
+      <input type="password" id="auth-password" placeholder="Password" onkeypress="if(event.key==='Enter')signIn()">
+      <button onclick="signIn()">Sign In</button>
+      <div class="auth-error" id="auth-error">Invalid credentials</div>
     </div>
   </div>
 
@@ -275,6 +277,7 @@
       <h1>🎯 Mission Control</h1>
       <div class="header-actions">
         <span class="sync-status connected" id="sync-status">● Connected</span>
+        <button onclick="logout()" style="background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-secondary); padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Logout</button>
       </div>
     </header>
     
@@ -414,35 +417,48 @@
   </div>
 
   <script>
-    // Auth
-    const AUTH_KEY = 'mc_authenticated';
+    // Supabase Auth
+    const SUPABASE_URL = 'https://npnqnsjmcyzkpoqynadr.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbnFuc2ptY3l6a3BvcXluYWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MjcxMDcsImV4cCI6MjA4NTMwMzEwN30.unckvGv1xozWSGGt5adOFKgffzZtyGNn5j_tsCm72WU';
     
-    function checkAuth() {
-      const pwd = document.getElementById('auth-password').value;
-      if (pwd === 'maverick2026' || pwd === 'stericube' || localStorage.getItem(AUTH_KEY) === 'true') {
-        localStorage.setItem(AUTH_KEY, 'true');
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let currentUser = null;
+    
+    async function signIn() {
+      const email = document.getElementById('auth-email').value;
+      const password = document.getElementById('auth-password').value;
+      
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      if (error) {
+        document.getElementById('auth-error').classList.add('show');
+        document.getElementById('auth-password').value = '';
+        return;
+      }
+      
+      currentUser = data.user;
+      document.getElementById('auth-overlay').classList.add('hidden');
+      document.getElementById('main-app').style.display = 'grid';
+      init();
+    }
+    
+    async function checkSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        currentUser = session.user;
         document.getElementById('auth-overlay').classList.add('hidden');
         document.getElementById('main-app').style.display = 'grid';
         init();
-      } else {
-        document.getElementById('auth-error').classList.add('show');
-        document.getElementById('auth-password').value = '';
       }
     }
     
-    if (localStorage.getItem(AUTH_KEY) === 'true') {
-      document.getElementById('auth-overlay').classList.add('hidden');
-      document.getElementById('main-app').style.display = 'grid';
-    }
-    
-    function logout() {
-      localStorage.removeItem(AUTH_KEY);
+    async function logout() {
+      await supabase.auth.signOut();
       location.reload();
     }
     
-    // Supabase config
-    const SUPABASE_URL = 'https://npnqnsjmcyzkpoqynadr.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbnFuc2ptY3l6a3BvcXluYWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MjcxMDcsImV4cCI6MjA4NTMwMzEwN30.unckvGv1xozWSGGt5adOFKgffzZtyGNn5j_tsCm72WU';
+    // Check for existing session on load
+    checkSession();
     
     let tasks = [];
     let agents = [];
@@ -810,9 +826,7 @@
       }
     }
     
-    if (localStorage.getItem(AUTH_KEY) === 'true') {
-      init();
-    }
+    // Init is called by checkSession() if authenticated
     
     // Mobile navigation
     function showMobileView(view) {
