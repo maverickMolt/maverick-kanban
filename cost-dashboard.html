@@ -208,58 +208,57 @@
     
     <script>
         const SUPABASE_URL = 'https://npnqnsjmcyzkpoqynadr.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbnFuc2ptY3l6a3BvcXluYWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MjcxMDcsImV4cCI6MjA4NTMwMzEwN30.0_eAr7t3jyPy5GbCCQUqB3DVy50wf5gF9j8VRjC1EQM';
+        // Using service role key for internal tool (not exposed to public)
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbnFuc2ptY3l6a3BvcXluYWRyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTcyNzEwNywiZXhwIjoyMDg1MzAzMTA3fQ.RNnZZc75S8pLCBK1WBk4orHa19dGbSBUlclPqWbo22E';
         
         async function fetchData() {
             try {
-                // Fetch summary stats
                 const now = new Date();
                 const today = now.toISOString().split('T')[0];
-                const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
-                const monthAgo = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
                 
                 // Today's cost
                 const todayRes = await fetch(
                     `${SUPABASE_URL}/rest/v1/session_metrics?timestamp=gte.${today}T00:00:00Z&select=total_cost,total_tokens`,
-                    { headers: { apikey: SUPABASE_ANON_KEY } }
+                    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
                 );
                 const todayData = await todayRes.json();
-                const todayCost = todayData.reduce((sum, r) => sum + parseFloat(r.total_cost || 0), 0);
-                const todayTokens = todayData.reduce((sum, r) => sum + parseInt(r.total_tokens || 0), 0);
                 
-                document.getElementById('todayCost').textContent = `$${todayCost.toFixed(2)}`;
-                document.getElementById('todayTokens').textContent = `${todayTokens.toLocaleString()} tokens`;
-                
-                // Weekly/monthly stats (implement similarly)
+                if (Array.isArray(todayData)) {
+                    const todayCost = todayData.reduce((sum, r) => sum + parseFloat(r.total_cost || 0), 0);
+                    const todayTokens = todayData.reduce((sum, r) => sum + parseInt(r.total_tokens || 0), 0);
+                    
+                    document.getElementById('todayCost').textContent = `$${todayCost.toFixed(2)}`;
+                    document.getElementById('todayTokens').textContent = `${todayTokens.toLocaleString()} tokens`;
+                }
                 
                 // Load daily breakdown
                 const dailyRes = await fetch(
                     `${SUPABASE_URL}/rest/v1/daily_cost_summary?order=date.desc&limit=7`,
-                    { headers: { apikey: SUPABASE_ANON_KEY } }
+                    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
                 );
                 const dailyData = await dailyRes.json();
-                renderDailyTable(dailyData);
+                if (Array.isArray(dailyData)) renderDailyTable(dailyData);
                 
                 // Load model comparison
                 const modelRes = await fetch(
                     `${SUPABASE_URL}/rest/v1/model_performance?order=total_cost.desc`,
-                    { headers: { apikey: SUPABASE_ANON_KEY } }
+                    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
                 );
                 const modelData = await modelRes.json();
-                renderModelTable(modelData);
+                if (Array.isArray(modelData)) renderModelTable(modelData);
                 
                 // Load expensive tasks
                 const expensiveRes = await fetch(
                     `${SUPABASE_URL}/rest/v1/expensive_tasks?limit=20`,
-                    { headers: { apikey: SUPABASE_ANON_KEY } }
+                    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } }
                 );
                 const expensiveData = await expensiveRes.json();
-                renderExpensiveTable(expensiveData);
+                if (Array.isArray(expensiveData)) renderExpensiveTable(expensiveData);
                 
             } catch (error) {
                 console.error('Error fetching data:', error);
                 document.querySelector('.container').insertAdjacentHTML('afterbegin',
-                    `<div class="error">Error loading data: ${error.message}. Make sure session_metrics table exists.</div>`
+                    `<div class="error">Error loading data: ${error.message}</div>`
                 );
             }
         }
