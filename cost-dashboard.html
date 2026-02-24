@@ -549,36 +549,24 @@
         }
     }
 
-    const PROXY_URL = 'http://localhost:3131';
+    // Supabase Edge Function proxy (no CORS issues, works from anywhere)
+    const EDGE_PROXY = 'https://npnqnsjmcyzkpoqynadr.supabase.co/functions/v1/anthropic-usage';
 
     async function fetchAnthropicUsage(daysBack = 30) {
+        if (!ANTHROPIC_ADMIN_KEY) {
+            throw new Error('No Anthropic Admin API key set. Click "🔑 Set API Key" to add it.');
+        }
         const ts = Math.floor((Date.now() - daysBack * 86400000) / 1000);
 
-        // Try local proxy first (no CORS issues)
-        try {
-            const res = await fetch(`${PROXY_URL}/usage?starting_at=${ts}`, { signal: AbortSignal.timeout(3000) });
-            if (res.ok) {
-                const json = await res.json();
-                if (!json.type || json.type !== 'error') {
-                    document.getElementById('keyBtn').textContent = '✅ Proxy Connected';
-                    document.getElementById('proxyStatus').textContent = '🟢 proxy connected';
-                    return json.data || [];
-                }
+        const res = await fetch(`${EDGE_PROXY}?starting_at=${ts}`, {
+            headers: {
+                'x-admin-key': ANTHROPIC_ADMIN_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
             }
-        } catch (e) {
-            // Proxy not running — fall through to direct fetch
-        }
-
-        // Direct fetch (requires admin key, will fail with CORS in browser)
-        if (!ANTHROPIC_ADMIN_KEY) {
-            throw new Error('Local proxy not running. Start it with: node ~/clawd/tools/anthropic-proxy/server.js\n\nOr set an API key and open the dashboard locally.');
-        }
-        const res = await fetch(
-            `https://api.anthropic.com/v1/organizations/usage_report/messages?starting_at=${ts}`,
-            { headers: { 'x-api-key': ANTHROPIC_ADMIN_KEY, 'anthropic-version': '2023-06-01' } }
-        );
+        });
         const json = await res.json();
         if (json.type === 'error') throw new Error(json.error.message);
+        document.getElementById('proxyStatus').textContent = '🟢 live';
         return json.data || [];
     }
 
