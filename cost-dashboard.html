@@ -248,6 +248,7 @@
         <div class="header-right">
             <span class="last-updated" id="lastUpdated">Fetching...</span>
             <button class="btn btn-outline" onclick="openLogModal()">+ Log Session</button>
+            <button class="btn btn-outline" onclick="promptApiKey()" id="keyBtn">🔑 Set API Key</button>
             <button class="btn" onclick="refresh()">↻ Refresh</button>
         </div>
     </header>
@@ -436,6 +437,8 @@
 <script>
     const SUPABASE_URL = 'https://npnqnsjmcyzkpoqynadr.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbnFuc2ptY3l6a3BvcXluYWRyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTcyNzEwNywiZXhwIjoyMDg1MzAzMTA3fQ.RNnZZc75S8pLCBK1WBk4orHa19dGbSBUlclPqWbo22E';
+    // Admin key stored in localStorage (never committed to repo)
+    let ANTHROPIC_ADMIN_KEY = localStorage.getItem('anthropic_admin_key') || '';
 
     const HEADERS = {
         apikey: SUPABASE_KEY,
@@ -507,103 +510,179 @@
         return m.replace('anthropic/', '').replace('openrouter/', '').replace('lmstudio/', '');
     }
 
+    // Anthropic pricing per 1M tokens
+    const ANTHRO_PRICING = {
+        sonnet: { input: 3.00, output: 15.00, cacheRead: 0.30, cacheWrite: 3.75 },
+        haiku:  { input: 0.80, output: 4.00,  cacheRead: 0.08, cacheWrite: 1.00 },
+        opus:   { input: 15.00, output: 75.00, cacheRead: 1.50, cacheWrite: 18.75 },
+        // blended estimate when model unknown
+        blended:{ input: 3.00, output: 15.00, cacheRead: 0.30, cacheWrite: 3.75 }
+    };
+
+    function estCostFromUsage(r) {
+        // Determine pricing tier from model name if available
+        let p = ANTHRO_PRICING.blended;
+        if (r.model) {
+            if (r.model.includes('haiku')) p = ANTHRO_PRICING.haiku;
+            else if (r.model.includes('opus')) p = ANTHRO_PRICING.opus;
+            else p = ANTHRO_PRICING.sonnet;
+        }
+        const cacheWrite5m = (r.cache_creation?.ephemeral_5m_input_tokens || 0);
+        const cacheWrite1h = (r.cache_creation?.ephemeral_1h_input_tokens || 0);
+        return (
+            (r.uncached_input_tokens || 0) * p.input / 1e6 +
+            (r.output_tokens || 0) * p.output / 1e6 +
+            (r.cache_read_input_tokens || 0) * p.cacheRead / 1e6 +
+            (cacheWrite5m + cacheWrite1h) * p.cacheWrite / 1e6
+        );
+    }
+
+    function promptApiKey() {
+        const key = prompt('Enter your Anthropic Admin API key (sk-ant-admin01-...):\n\nThis is stored only in your browser localStorage, never sent anywhere except Anthropic\'s API.', ANTHROPIC_ADMIN_KEY);
+        if (key && key.startsWith('sk-ant-admin')) {
+            ANTHROPIC_ADMIN_KEY = key;
+            localStorage.setItem('anthropic_admin_key', key);
+            document.getElementById('keyBtn').textContent = '✅ API Key Set';
+            refresh();
+        } else if (key !== null) {
+            alert('Invalid key format. Must start with sk-ant-admin');
+        }
+    }
+
+    async function fetchAnthropicUsage(daysBack = 30) {
+        if (!ANTHROPIC_ADMIN_KEY) {
+            throw new Error('No Anthropic Admin API key set. Click "🔑 Set API Key" to add it.');
+        }
+        const ts = Math.floor((Date.now() - daysBack * 86400000) / 1000);
+        const res = await fetch(
+            `https://api.anthropic.com/v1/organizations/usage_report/messages?starting_at=${ts}`,
+            { headers: { 'x-api-key': ANTHROPIC_ADMIN_KEY, 'anthropic-version': '2023-06-01' } }
+        );
+        const json = await res.json();
+        if (json.type === 'error') throw new Error(json.error.message);
+        return json.data || [];
+    }
+
     async function refresh() {
         document.getElementById('lastUpdated').textContent = '⟳ Loading...';
         document.getElementById('errorBanner').style.display = 'none';
 
         try {
-            const now = new Date();
-            const today = now.toISOString().split('T')[0];
-            const weekAgo = new Date(now - 7 * 86400000).toISOString();
-            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-
-            // Fetch all session data in parallel
-            const [allSessions, dailySummary, modelPerf, expensiveTasks] = await Promise.all([
+            // Fetch live Anthropic usage + Supabase sessions in parallel
+            const [anthropicData, allSessions, expensiveTasks] = await Promise.all([
+                fetchAnthropicUsage(30),
                 api(`session_metrics?order=timestamp.desc&limit=200`),
-                api(`daily_cost_summary?order=date.desc&limit=14`),
-                api(`model_performance?order=total_cost.desc`),
                 api(`expensive_tasks?limit=20`)
             ]);
 
-            if (!Array.isArray(allSessions)) throw new Error('Failed to load session data: ' + JSON.stringify(allSessions));
+            // Process Anthropic data into daily buckets
+            const anthropicDays = anthropicData
+                .filter(d => d.results && d.results.length > 0)
+                .map(d => {
+                    const r = d.results[0];
+                    const cost = estCostFromUsage(r);
+                    const totalTokens = (r.uncached_input_tokens || 0) +
+                        (r.cache_creation?.ephemeral_5m_input_tokens || 0) +
+                        (r.cache_creation?.ephemeral_1h_input_tokens || 0) +
+                        (r.cache_read_input_tokens || 0) +
+                        (r.output_tokens || 0);
+                    return {
+                        date: d.starting_at.slice(0, 10),
+                        uncached_input: r.uncached_input_tokens || 0,
+                        cache_write: (r.cache_creation?.ephemeral_5m_input_tokens || 0) + (r.cache_creation?.ephemeral_1h_input_tokens || 0),
+                        cache_read: r.cache_read_input_tokens || 0,
+                        output: r.output_tokens || 0,
+                        total_tokens: totalTokens,
+                        cost
+                    };
+                });
 
-            // Compute summary stats
-            const todaySessions = allSessions.filter(s => s.timestamp >= today + 'T00:00:00Z');
-            const weekSessions = allSessions.filter(s => s.timestamp >= weekAgo);
-            const monthSessions = allSessions.filter(s => s.timestamp >= monthStart);
+            // Summary stats from Anthropic data
+            const today = new Date().toISOString().slice(0, 10);
+            const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+            const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
 
-            const sum = (arr, key) => arr.reduce((acc, s) => acc + parseFloat(s[key] || 0), 0);
-            const sumInt = (arr, key) => arr.reduce((acc, s) => acc + parseInt(s[key] || 0), 0);
+            const sumField = (arr, key) => arr.reduce((a, d) => a + (d[key] || 0), 0);
 
-            document.getElementById('todayCost').textContent = fmtCostBig(sum(todaySessions, 'total_cost'));
-            document.getElementById('todayTokens').textContent = `${fmtNum(sumInt(todaySessions, 'total_tokens'))} tokens`;
+            const todayDays = anthropicDays.filter(d => d.date >= today);
+            const weekDays = anthropicDays.filter(d => d.date >= weekAgo);
+            const monthDays = anthropicDays.filter(d => d.date >= monthStart);
 
-            document.getElementById('weekCost').textContent = fmtCostBig(sum(weekSessions, 'total_cost'));
-            document.getElementById('weekTokens').textContent = `${fmtNum(sumInt(weekSessions, 'total_tokens'))} tokens`;
+            document.getElementById('todayCost').textContent = fmtCostBig(sumField(todayDays, 'cost'));
+            document.getElementById('todayTokens').textContent = `${fmtNum(sumField(todayDays, 'total_tokens'))} tokens`;
 
-            document.getElementById('monthCost').textContent = fmtCostBig(sum(monthSessions, 'total_cost'));
-            document.getElementById('monthTokens').textContent = `${fmtNum(sumInt(monthSessions, 'total_tokens'))} tokens`;
+            document.getElementById('weekCost').textContent = fmtCostBig(sumField(weekDays, 'cost'));
+            document.getElementById('weekTokens').textContent = `${fmtNum(sumField(weekDays, 'total_tokens'))} tokens`;
 
-            const totalRequests = allSessions.length;
-            const totalCost = sum(allSessions, 'total_cost');
-            document.getElementById('avgCost').textContent = totalRequests > 0 ? fmtCostBig(totalCost / totalRequests) : '—';
-            document.getElementById('totalRequests').textContent = `${totalRequests} total requests`;
+            document.getElementById('monthCost').textContent = fmtCostBig(sumField(monthDays, 'cost'));
+            document.getElementById('monthTokens').textContent = `${fmtNum(sumField(monthDays, 'total_tokens'))} tokens`;
 
-            // Anthropic share
-            const anthropicSessions = allSessions.filter(s => s.model && (s.model.includes('anthropic') || s.model.includes('claude')));
-            const anthropicCost = sum(anthropicSessions, 'total_cost');
-            const share = totalCost > 0 ? Math.round((anthropicCost / totalCost) * 100) : 0;
-            document.getElementById('anthropicShare').textContent = `${share}%`;
-            document.getElementById('anthropicCost').textContent = `${fmtCost(anthropicCost)} of ${fmtCost(totalCost)} total`;
+            const totalCost = sumField(anthropicDays, 'cost');
+            document.getElementById('anthropicShare').textContent = '100%';
+            document.getElementById('anthropicCost').textContent = `${fmtCostBig(totalCost)} total (30 days)`;
 
-            // Cache savings
-            const totalCacheRead = sumInt(allSessions, 'cache_read_tokens');
+            const totalCacheRead = sumField(anthropicDays, 'cache_read');
             document.getElementById('cacheSavings').textContent = fmtNum(totalCacheRead);
 
-            // Daily bar chart
-            renderBarChart(dailySummary);
+            // Avg cost per day (days with activity)
+            const activeDays = anthropicDays.length;
+            document.getElementById('avgCost').textContent = activeDays > 0 ? fmtCostBig(totalCost / activeDays) : '—';
+            document.getElementById('totalRequests').textContent = `${activeDays} active days`;
 
-            // Tables
-            if (Array.isArray(dailySummary)) renderDailyTable(dailySummary);
-            if (Array.isArray(modelPerf)) renderModelTable(modelPerf);
-            renderSessionTable(allSessions.slice(0, 20));
+            // Render charts and tables
+            renderBarChart(anthropicDays);
+            renderAnthropicDailyTable(anthropicDays);
+            renderModelTable([]); // model breakdown not available from API yet
+            renderSessionTable(Array.isArray(allSessions) ? allSessions.slice(0, 20) : []);
             if (Array.isArray(expensiveTasks)) renderExpensiveTable(expensiveTasks);
 
-            document.getElementById('lastUpdated').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+            document.getElementById('lastUpdated').textContent = `Live from Anthropic API · ${new Date().toLocaleTimeString()}`;
 
         } catch (err) {
             console.error(err);
-            document.getElementById('errorBanner').textContent = `⚠ Error loading data: ${err.message}`;
+            document.getElementById('errorBanner').textContent = `⚠ Error: ${err.message}`;
             document.getElementById('errorBanner').style.display = 'block';
             document.getElementById('lastUpdated').textContent = 'Error';
         }
     }
 
+    function renderAnthropicDailyTable(data) {
+        const tbody = document.querySelector('#dailyTable tbody');
+        if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No Anthropic usage data found for this period.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = [...data].reverse().map(r => `
+            <tr>
+                <td>${new Date(r.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</td>
+                <td><span class="badge badge-anthropic">Anthropic</span></td>
+                <td>—</td>
+                <td>${fmtNum(r.uncached_input)} uncached + ${fmtNum(r.cache_write)} written</td>
+                <td>${fmtNum(r.output)}</td>
+                <td class="${getCostClass(r.cost)}">${fmtCost(r.cost)}</td>
+                <td>${fmtNum(r.cache_read)} read</td>
+            </tr>
+        `).join('');
+    }
+
     function renderBarChart(data) {
         const el = document.getElementById('dailyBarChart');
-        if (!Array.isArray(data) || data.length === 0) {
+        if (!data || data.length === 0) {
             el.innerHTML = '<div class="empty-state">No data yet</div>';
             return;
         }
 
-        // Group by date
-        const byDate = {};
-        data.forEach(row => {
-            if (!byDate[row.date]) byDate[row.date] = 0;
-            byDate[row.date] += parseFloat(row.total_cost || 0);
-        });
+        const sorted = [...data].sort((a, b) => a.date.localeCompare(b.date)).slice(-14);
+        const maxCost = Math.max(...sorted.map(d => d.cost || d.total_cost || 0), 0.001);
 
-        const dates = Object.keys(byDate).sort().slice(-14);
-        const maxCost = Math.max(...dates.map(d => byDate[d]), 0.001);
-
-        el.innerHTML = dates.map(d => {
-            const cost = byDate[d];
+        el.innerHTML = sorted.map(d => {
+            const cost = d.cost ?? parseFloat(d.total_cost || 0);
             const pct = Math.max((cost / maxCost) * 100, 1);
-            const label = new Date(d + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const label = new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             return `
                 <div class="bar-wrap">
                     <div class="bar-value">${fmtCost(cost)}</div>
-                    <div class="bar" style="height: ${pct}%;" title="${label}: ${fmtCost(cost)}"></div>
+                    <div class="bar anthropic" style="height: ${pct}%;" title="${label}: ${fmtCost(cost)}"></div>
                     <div class="bar-label">${label}</div>
                 </div>
             `;
@@ -749,6 +828,9 @@
     });
 
     // Initial load
+    if (ANTHROPIC_ADMIN_KEY) {
+        document.getElementById('keyBtn').textContent = '✅ API Key Set';
+    }
     refresh();
 
     // Auto-refresh every 60 seconds
