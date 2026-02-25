@@ -6,371 +6,147 @@
   <title>SteriCube Pipeline Tracker</title>
   <style>
     :root {
-      --bg: #0f0f0f;
-      --bg2: #151515;
-      --surface: #1a1a1a;
-      --surface2: #222222;
-      --surface3: #2a2a2a;
-      --border: #2a2a2a;
-      --border2: #333;
-      --orange: #ff9500;
-      --orange-dim: rgba(255, 149, 0, 0.1);
-      --orange-glow: rgba(255, 149, 0, 0.2);
-      --text: #f0f0f0;
-      --text-muted: #888;
-      --text-dim: #555;
-      --green: #30d158;
-      --red: #ff453a;
-      --blue: #0a84ff;
-      --purple: #bf5af2;
-      --yellow: #ffd60a;
-      --teal: #32d2d2;
-      --gray: #6e6e73;
-      --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+      --bg:#0f0f0f;--bg2:#151515;--surface:#1a1a1a;--surface2:#222;--border:#2a2a2a;--border2:#333;
+      --orange:#ff9500;--orange-dim:rgba(255,149,0,.1);--text:#f0f0f0;--text-muted:#888;--text-dim:#555;
+      --green:#30d158;--red:#ff453a;--blue:#0a84ff;--purple:#bf5af2;--yellow:#ffd60a;--teal:#32d2d2;--gray:#6e6e73;
+      --font:-apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',sans-serif;
     }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font);
-      font-size: 14px;
-      min-height: 100vh;
-    }
-
-    /* ── Header ── */
-    .header {
-      background: var(--bg2);
-      border-bottom: 1px solid var(--border);
-      padding: 0.875rem 1.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-    .header-left { display: flex; align-items: center; gap: 0.75rem; }
-    .header h1 { font-size: 1.1rem; font-weight: 600; color: var(--orange); letter-spacing: 0.01em; }
-    .header-subtitle { font-size: 0.75rem; color: var(--text-muted); }
-    .header-actions { display: flex; gap: 0.5rem; align-items: center; }
-
-    .btn {
-      background: var(--surface2);
-      border: 1px solid var(--border2);
-      color: var(--text-muted);
-      padding: 0.35rem 0.85rem;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.78rem;
-      font-family: var(--font);
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      transition: all 0.15s;
-    }
-    .btn:hover { color: var(--text); border-color: var(--orange); background: var(--orange-dim); }
-    .btn-primary { background: var(--orange); color: #000; border-color: var(--orange); font-weight: 600; }
-    .btn-primary:hover { background: #e08500; color: #000; }
-    .btn-sm { padding: 0.22rem 0.6rem; font-size: 0.72rem; }
-    .btn-call { background: rgba(48,209,88,0.1); border-color: rgba(48,209,88,0.35); color: var(--green); }
-    .btn-call:hover { background: rgba(48,209,88,0.2); border-color: var(--green); color: var(--green); }
-    .btn-email { background: rgba(10,132,255,0.1); border-color: rgba(10,132,255,0.3); color: #4da6ff; }
-    .btn-email:hover { background: rgba(10,132,255,0.2); border-color: var(--blue); color: var(--blue); }
-    .btn-map { background: rgba(191,90,242,0.1); border-color: rgba(191,90,242,0.3); color: #d080ff; }
-    .btn-map:hover { background: rgba(191,90,242,0.2); border-color: var(--purple); color: var(--purple); }
-    .btn-advance { background: rgba(255,149,0,0.1); border-color: rgba(255,149,0,0.3); color: var(--orange); }
-    .btn-advance:hover { background: rgba(255,149,0,0.2); border-color: var(--orange); color: var(--orange); }
-    .btn-advance.confirmed { background: rgba(48,209,88,0.15); border-color: var(--green); color: var(--green); }
-
-    .nav-back {
-      font-size: 0.78rem; color: var(--text-muted); text-decoration: none;
-      display: flex; align-items: center; gap: 0.35rem;
-    }
-    .nav-back:hover { color: var(--orange); }
-
-    /* ── Due Banner ── */
-    #due-banner {
-      display: none;
-      background: rgba(255, 69, 58, 0.12);
-      border-bottom: 1px solid rgba(255, 69, 58, 0.3);
-      padding: 0.65rem 1.5rem;
-      font-size: 0.82rem;
-      color: var(--red);
-      align-items: center;
-      gap: 0.5rem;
-    }
-    #due-banner.visible { display: flex; }
-    .due-items { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-left: 0.5rem; }
-    .due-chip {
-      background: rgba(255, 69, 58, 0.15);
-      border: 1px solid rgba(255, 69, 58, 0.3);
-      border-radius: 4px; padding: 0.15rem 0.5rem; font-size: 0.75rem; color: var(--red);
-    }
-
-    /* ── Pipeline Summary Bar ── */
-    .pipeline-bar { padding: 1rem 1.5rem 0; }
-    .pipeline-stages { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .stage-pill {
-      display: flex; align-items: center; gap: 0.35rem;
-      padding: 0.4rem 0.75rem; border-radius: 20px;
-      font-size: 0.75rem; font-weight: 500; border: 1px solid transparent;
-      transition: all 0.15s;
-    }
-    .stage-pill .count { font-size: 0.85rem; font-weight: 700; }
-    .stage-pill.researched        { background: rgba(110,110,115,0.15); border-color: rgba(110,110,115,0.3); color: #9e9ea6; }
-    .stage-pill.contacted         { background: rgba(10,132,255,0.15); border-color: rgba(10,132,255,0.3); color: #4da6ff; }
-    .stage-pill.replied           { background: rgba(191,90,242,0.15); border-color: rgba(191,90,242,0.3); color: #d080ff; }
-    .stage-pill.meeting_scheduled { background: rgba(255,149,0,0.15); border-color: rgba(255,149,0,0.3); color: var(--orange); }
-    .stage-pill.demo_done         { background: rgba(255,214,10,0.15); border-color: rgba(255,214,10,0.3); color: #ffd60a; }
-    .stage-pill.proposal          { background: rgba(50,210,210,0.15); border-color: rgba(50,210,210,0.3); color: var(--teal); }
-    .stage-pill.closed_won        { background: rgba(48,209,88,0.15); border-color: rgba(48,209,88,0.3); color: var(--green); }
-    .stage-pill.closed_lost       { background: rgba(255,69,58,0.15); border-color: rgba(255,69,58,0.3); color: var(--red); }
-
-    /* ── Route Tabs ── */
-    .tabs-bar {
-      padding: 1rem 1.5rem 0;
-      border-bottom: 1px solid var(--border);
-      display: flex; gap: 0;
-    }
-    .tab {
-      padding: 0.6rem 1.25rem; border: none; background: transparent;
-      color: var(--text-muted); font-size: 0.85rem; font-family: var(--font);
-      cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s;
-    }
-    .tab:hover { color: var(--text); }
-    .tab.active { color: var(--orange); border-bottom-color: var(--orange); }
-
-    /* ── Main Content ── */
-    .main { padding: 1.25rem 1.5rem; }
-
-    /* ── Morning Briefing Card ── */
-    .briefing-card {
-      background: linear-gradient(135deg, rgba(255,149,0,0.07) 0%, rgba(255,149,0,0.03) 100%);
-      border: 1px solid rgba(255,149,0,0.22);
-      border-radius: 10px;
-      padding: 1rem 1.25rem;
-      margin-bottom: 1.25rem;
-    }
-    .briefing-header {
-      display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;
-    }
-    .briefing-header h3 { font-size: 0.88rem; font-weight: 600; color: var(--orange); }
-    .briefing-header .date { font-size: 0.75rem; color: var(--text-muted); margin-left: auto; }
-    .briefing-stats { display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: flex-start; }
-    .briefing-divider { width: 1px; background: var(--border2); align-self: stretch; }
-    .briefing-stat { display: flex; flex-direction: column; gap: 0.15rem; }
-    .briefing-stat .val { font-size: 1.5rem; font-weight: 700; color: var(--text); line-height: 1; }
-    .briefing-stat .val.warn { color: var(--red); }
-    .briefing-stat .val.ok   { color: var(--green); }
-    .briefing-stat .lbl { font-size: 0.67rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-    .briefing-footer {
-      margin-top: 0.75rem; padding-top: 0.65rem; border-top: 1px solid var(--border);
-      font-size: 0.75rem; color: var(--text-muted);
-      display: flex; gap: 0.5rem; align-items: flex-start; flex-wrap: wrap;
-    }
-    .overdue-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; }
-    .overdue-chip {
-      background: rgba(255,69,58,0.12); border: 1px solid rgba(255,69,58,0.3);
-      border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.7rem; color: var(--red);
-    }
-
-    /* ── Prospect Grid ── */
-    .prospects-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-      gap: 1rem;
-    }
-
-    /* ── Prospect Card ── */
-    .prospect-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      overflow: hidden;
-      transition: border-color 0.15s, transform 0.15s;
-    }
-    .prospect-card:hover { border-color: var(--border2); transform: translateY(-1px); }
-    .prospect-card.expanded { border-color: var(--orange); transform: none; }
-
-    .card-top {
-      padding: 0.875rem 1rem 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 0.5rem;
-      cursor: pointer;
-    }
-    .card-top-left { flex: 1; min-width: 0; }
-    .facility-name {
-      font-size: 0.92rem; font-weight: 600; color: var(--text);
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.2rem;
-    }
-    .facility-address { font-size: 0.73rem; color: var(--text-muted); }
-
-    .card-badges {
-      display: flex; flex-direction: column; align-items: flex-end; gap: 0.3rem; flex-shrink: 0;
-    }
-    .stage-badge {
-      font-size: 0.68rem; font-weight: 600; padding: 0.2rem 0.5rem;
-      border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
-    }
-    .stage-badge.researched        { background: rgba(110,110,115,0.2); color: #9e9ea6; }
-    .stage-badge.contacted         { background: rgba(10,132,255,0.2); color: #4da6ff; }
-    .stage-badge.replied           { background: rgba(191,90,242,0.2); color: #d080ff; }
-    .stage-badge.meeting_scheduled { background: rgba(255,149,0,0.2); color: var(--orange); }
-    .stage-badge.demo_done         { background: rgba(255,214,10,0.2); color: #ffd60a; }
-    .stage-badge.proposal          { background: rgba(50,210,210,0.2); color: var(--teal); }
-    .stage-badge.closed_won        { background: rgba(48,209,88,0.2); color: var(--green); }
-    .stage-badge.closed_lost       { background: rgba(255,69,58,0.2); color: var(--red); }
-
-    .priority-dot { width: 8px; height: 8px; border-radius: 50%; }
-    .priority-dot.high   { background: var(--red); }
-    .priority-dot.medium { background: var(--yellow); }
-    .priority-dot.low    { background: var(--gray); }
-
-    .card-meta {
-      padding: 0.5rem 1rem 0;
-      display: flex; gap: 1rem;
-      cursor: pointer;
-    }
-    .meta-item { display: flex; flex-direction: column; gap: 0.15rem; }
-    .meta-label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
-    .meta-value { font-size: 0.78rem; color: var(--text-muted); }
-    .meta-value.overdue   { color: var(--red); font-weight: 600; }
-    .meta-value.due-today { color: var(--yellow); font-weight: 600; }
-
-    /* Quick action buttons row */
-    .card-actions {
-      padding: 0.55rem 1rem;
-      display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center;
-    }
-
-    .card-notes {
-      padding: 0 1rem 0.75rem;
-      font-size: 0.75rem; color: var(--text-muted); line-height: 1.5;
-      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-    }
-
-    /* ── Expanded Card Detail ── */
-    .card-detail { display: none; border-top: 1px solid var(--border); background: var(--bg2); }
-    .prospect-card.expanded .card-detail { display: block; }
-
-    .detail-section {
-      padding: 1rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .detail-section:last-child { border-bottom: none; }
-    .detail-section h4 {
-      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
-      color: var(--text-dim); margin-bottom: 0.65rem;
-    }
-
-    .contact-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.65rem;
-    }
-    .contact-field label { font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 0.2rem; }
-    .contact-field input {
-      width: 100%; background: var(--surface2); border: 1px solid var(--border2);
-      color: var(--text); padding: 0.35rem 0.5rem; border-radius: 5px;
-      font-size: 0.78rem; font-family: var(--font); transition: border-color 0.15s;
-    }
-    .contact-field input:focus { outline: none; border-color: var(--orange); }
-    .contact-cta { display: flex; gap: 0.4rem; margin-top: 0.35rem; }
-
-    .stage-update { display: flex; gap: 0.5rem; align-items: center; }
-    .stage-select {
-      flex: 1; background: var(--surface2); border: 1px solid var(--border2);
-      color: var(--text); padding: 0.4rem 0.6rem; border-radius: 5px;
-      font-size: 0.82rem; font-family: var(--font); cursor: pointer;
-    }
-    .stage-select:focus { outline: none; border-color: var(--orange); }
-
-    /* Touchpoints */
-    .touchpoint-list {
-      display: flex; flex-direction: column; gap: 0.5rem; max-height: 220px; overflow-y: auto;
-    }
-    .touchpoint {
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 6px; padding: 0.5rem 0.75rem;
-    }
-    .tp-header {
-      display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;
-    }
-    .tp-type { font-size: 0.75rem; font-weight: 600; color: var(--orange); }
-    .tp-date { font-size: 0.68rem; color: var(--text-dim); }
-    .tp-note { font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; }
-    .tp-followup { font-size: 0.7rem; color: var(--teal); margin-top: 0.25rem; }
-    .no-touchpoints { font-size: 0.78rem; color: var(--text-dim); font-style: italic; }
-
-    /* Add note form */
-    .add-note-form { display: flex; flex-direction: column; gap: 0.5rem; }
-    .add-note-row { display: flex; gap: 0.5rem; }
-    .add-note-form textarea {
-      width: 100%; background: var(--surface2); border: 1px solid var(--border2);
-      color: var(--text); padding: 0.5rem 0.65rem; border-radius: 5px;
-      font-size: 0.82rem; font-family: var(--font); resize: vertical; min-height: 60px;
-    }
-    .add-note-form textarea:focus { outline: none; border-color: var(--orange); }
-    .type-select {
-      background: var(--surface2); border: 1px solid var(--border2);
-      color: var(--text); padding: 0.4rem 0.6rem; border-radius: 5px;
-      font-size: 0.78rem; font-family: var(--font); cursor: pointer;
-    }
-    .followup-input {
-      background: var(--surface2); border: 1px solid var(--border2);
-      color: var(--text); padding: 0.4rem 0.6rem; border-radius: 5px;
-      font-size: 0.78rem; font-family: var(--font); flex: 1;
-    }
-
-    /* Loading */
-    .loading {
-      display: flex; align-items: center; justify-content: center;
-      padding: 3rem; color: var(--text-muted); flex-direction: column; gap: 1rem;
-    }
-    .spinner {
-      width: 28px; height: 28px; border: 2px solid var(--border2);
-      border-top-color: var(--orange); border-radius: 50%;
-      animation: spin 0.6s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    .empty-state { text-align: center; padding: 3rem; color: var(--text-dim); font-size: 0.85rem; }
-
-    /* Toast */
-    #toast {
-      position: fixed; bottom: 1.5rem; right: 1.5rem;
-      background: var(--surface2); border: 1px solid var(--border2);
-      border-radius: 8px; padding: 0.65rem 1.1rem; font-size: 0.82rem; color: var(--text);
-      opacity: 0; transform: translateY(8px); transition: all 0.2s;
-      pointer-events: none; z-index: 999; max-width: 320px;
-    }
-    #toast.show { opacity: 1; transform: translateY(0); }
-    #toast.success { border-color: var(--green); color: var(--green); }
-    #toast.error   { border-color: var(--red); color: var(--red); }
-
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-
-    .route-tag {
-      font-size: 0.65rem; color: var(--text-dim);
-      background: var(--surface2); padding: 0.15rem 0.4rem; border-radius: 3px;
-    }
-    .last-updated { font-size: 0.72rem; color: var(--text-dim); }
-
-    @media (max-width: 600px) {
-      .prospects-grid { grid-template-columns: 1fr; }
-      .pipeline-stages { gap: 0.35rem; }
-      .briefing-stats { gap: 1rem; }
-    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;min-height:100vh}
+    .header{background:var(--bg2);border-bottom:1px solid var(--border);padding:.875rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+    .header-left{display:flex;align-items:center;gap:.75rem}
+    .header h1{font-size:1.1rem;font-weight:600;color:var(--orange);letter-spacing:.01em}
+    .header-subtitle{font-size:.75rem;color:var(--text-muted)}
+    .header-actions{display:flex;gap:.5rem;align-items:center}
+    .btn{background:var(--surface2);border:1px solid var(--border2);color:var(--text-muted);padding:.35rem .85rem;border-radius:6px;cursor:pointer;font-size:.78rem;font-family:var(--font);text-decoration:none;display:inline-flex;align-items:center;gap:.35rem;transition:all .15s}
+    .btn:hover{color:var(--text);border-color:var(--orange);background:var(--orange-dim)}
+    .btn-primary{background:var(--orange);color:#000;border-color:var(--orange);font-weight:600}
+    .btn-primary:hover{background:#e08500;color:#000}
+    .btn-sm{padding:.22rem .6rem;font-size:.72rem}
+    .btn-call{background:rgba(48,209,88,.1);border-color:rgba(48,209,88,.35);color:var(--green)}
+    .btn-call:hover{background:rgba(48,209,88,.2);border-color:var(--green);color:var(--green)}
+    .btn-email{background:rgba(10,132,255,.1);border-color:rgba(10,132,255,.3);color:#4da6ff}
+    .btn-email:hover{background:rgba(10,132,255,.2);border-color:var(--blue);color:var(--blue)}
+    .btn-map{background:rgba(191,90,242,.1);border-color:rgba(191,90,242,.3);color:#d080ff}
+    .btn-map:hover{background:rgba(191,90,242,.2);border-color:var(--purple);color:var(--purple)}
+    .btn-advance{background:rgba(255,149,0,.1);border-color:rgba(255,149,0,.3);color:var(--orange)}
+    .btn-advance:hover{background:rgba(255,149,0,.2);border-color:var(--orange)}
+    .btn-advance.confirmed{background:rgba(48,209,88,.15);border-color:var(--green);color:var(--green)}
+    .nav-back{font-size:.78rem;color:var(--text-muted);text-decoration:none;display:flex;align-items:center;gap:.35rem}
+    .nav-back:hover{color:var(--orange)}
+    #due-banner{display:none;background:rgba(255,69,58,.12);border-bottom:1px solid rgba(255,69,58,.3);padding:.65rem 1.5rem;font-size:.82rem;color:var(--red);align-items:center;gap:.5rem}
+    #due-banner.visible{display:flex}
+    .due-items{display:flex;gap:.75rem;flex-wrap:wrap;margin-left:.5rem}
+    .due-chip{background:rgba(255,69,58,.15);border:1px solid rgba(255,69,58,.3);border-radius:4px;padding:.15rem .5rem;font-size:.75rem;color:var(--red)}
+    .pipeline-bar{padding:1rem 1.5rem 0}
+    .pipeline-stages{display:flex;gap:.5rem;flex-wrap:wrap}
+    .stage-pill{display:flex;align-items:center;gap:.35rem;padding:.4rem .75rem;border-radius:20px;font-size:.75rem;font-weight:500;border:1px solid transparent;transition:all .15s}
+    .stage-pill .count{font-size:.85rem;font-weight:700}
+    .stage-pill.researched{background:rgba(110,110,115,.15);border-color:rgba(110,110,115,.3);color:#9e9ea6}
+    .stage-pill.contacted{background:rgba(10,132,255,.15);border-color:rgba(10,132,255,.3);color:#4da6ff}
+    .stage-pill.replied{background:rgba(191,90,242,.15);border-color:rgba(191,90,242,.3);color:#d080ff}
+    .stage-pill.meeting_scheduled{background:rgba(255,149,0,.15);border-color:rgba(255,149,0,.3);color:var(--orange)}
+    .stage-pill.demo_done{background:rgba(255,214,10,.15);border-color:rgba(255,214,10,.3);color:#ffd60a}
+    .stage-pill.proposal{background:rgba(50,210,210,.15);border-color:rgba(50,210,210,.3);color:var(--teal)}
+    .stage-pill.closed_won{background:rgba(48,209,88,.15);border-color:rgba(48,209,88,.3);color:var(--green)}
+    .stage-pill.closed_lost{background:rgba(255,69,58,.15);border-color:rgba(255,69,58,.3);color:var(--red)}
+    .tabs-bar{padding:1rem 1.5rem 0;border-bottom:1px solid var(--border);display:flex;gap:0}
+    .tab{padding:.6rem 1.25rem;border:none;background:transparent;color:var(--text-muted);font-size:.85rem;font-family:var(--font);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+    .tab:hover{color:var(--text)}
+    .tab.active{color:var(--orange);border-bottom-color:var(--orange)}
+    .main{padding:1.25rem 1.5rem}
+    /* Morning Briefing */
+    .briefing-card{background:linear-gradient(135deg,rgba(255,149,0,.07) 0%,rgba(255,149,0,.03) 100%);border:1px solid rgba(255,149,0,.22);border-radius:10px;padding:1rem 1.25rem;margin-bottom:1.25rem}
+    .briefing-header{display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem}
+    .briefing-header h3{font-size:.88rem;font-weight:600;color:var(--orange)}
+    .briefing-header .date{font-size:.75rem;color:var(--text-muted);margin-left:auto}
+    .briefing-stats{display:flex;gap:1.5rem;flex-wrap:wrap;align-items:flex-start}
+    .briefing-divider{width:1px;background:var(--border2);align-self:stretch}
+    .bstat{display:flex;flex-direction:column;gap:.15rem}
+    .bstat .val{font-size:1.5rem;font-weight:700;color:var(--text);line-height:1}
+    .bstat .val.warn{color:var(--red)}
+    .bstat .val.ok{color:var(--green)}
+    .bstat .lbl{font-size:.67rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em}
+    .briefing-footer{margin-top:.75rem;padding-top:.65rem;border-top:1px solid var(--border);font-size:.75rem;color:var(--text-muted);display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+    .overdue-chips{display:flex;flex-wrap:wrap;gap:.35rem}
+    .overdue-chip{background:rgba(255,69,58,.12);border:1px solid rgba(255,69,58,.3);border-radius:4px;padding:.1rem .4rem;font-size:.7rem;color:var(--red)}
+    /* Cards */
+    .prospects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:1rem}
+    .prospect-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;transition:border-color .15s,transform .15s}
+    .prospect-card:hover{border-color:var(--border2);transform:translateY(-1px)}
+    .prospect-card.expanded{border-color:var(--orange);transform:none}
+    .card-top{padding:.875rem 1rem .4rem;display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;cursor:pointer}
+    .card-top-left{flex:1;min-width:0}
+    .facility-name{font-size:.92rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:.2rem}
+    .facility-address{font-size:.73rem;color:var(--text-muted)}
+    .card-badges{display:flex;flex-direction:column;align-items:flex-end;gap:.3rem;flex-shrink:0}
+    .stage-badge{font-size:.68rem;font-weight:600;padding:.2rem .5rem;border-radius:4px;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+    .stage-badge.researched{background:rgba(110,110,115,.2);color:#9e9ea6}
+    .stage-badge.contacted{background:rgba(10,132,255,.2);color:#4da6ff}
+    .stage-badge.replied{background:rgba(191,90,242,.2);color:#d080ff}
+    .stage-badge.meeting_scheduled{background:rgba(255,149,0,.2);color:var(--orange)}
+    .stage-badge.demo_done{background:rgba(255,214,10,.2);color:#ffd60a}
+    .stage-badge.proposal{background:rgba(50,210,210,.2);color:var(--teal)}
+    .stage-badge.closed_won{background:rgba(48,209,88,.2);color:var(--green)}
+    .stage-badge.closed_lost{background:rgba(255,69,58,.2);color:var(--red)}
+    .priority-dot{width:8px;height:8px;border-radius:50%}
+    .priority-dot.high{background:var(--red)}
+    .priority-dot.medium{background:var(--yellow)}
+    .priority-dot.low{background:var(--gray)}
+    .card-meta{padding:.3rem 1rem .3rem;display:flex;gap:1rem;cursor:pointer}
+    .meta-item{display:flex;flex-direction:column;gap:.15rem}
+    .meta-label{font-size:.65rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em}
+    .meta-value{font-size:.78rem;color:var(--text-muted)}
+    .meta-value.overdue{color:var(--red);font-weight:600}
+    .meta-value.due-today{color:var(--yellow);font-weight:600}
+    .card-actions{padding:.45rem 1rem .6rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
+    .card-notes{padding:0 1rem .75rem;font-size:.75rem;color:var(--text-muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    /* Expanded */
+    .card-detail{display:none;border-top:1px solid var(--border);background:var(--bg2)}
+    .prospect-card.expanded .card-detail{display:block}
+    .detail-section{padding:1rem;border-bottom:1px solid var(--border)}
+    .detail-section:last-child{border-bottom:none}
+    .detail-section h4{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin-bottom:.65rem}
+    .contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.6rem}
+    .contact-field label{font-size:.65rem;color:var(--text-dim);display:block;margin-bottom:.2rem}
+    .contact-field input{width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:.35rem .5rem;border-radius:5px;font-size:.78rem;font-family:var(--font);transition:border-color .15s}
+    .contact-field input:focus{outline:none;border-color:var(--orange)}
+    .contact-cta{display:flex;gap:.4rem;margin-top:.4rem}
+    .stage-update{display:flex;gap:.5rem;align-items:center}
+    .stage-select{flex:1;background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:.4rem .6rem;border-radius:5px;font-size:.82rem;font-family:var(--font);cursor:pointer}
+    .stage-select:focus{outline:none;border-color:var(--orange)}
+    .touchpoint-list{display:flex;flex-direction:column;gap:.5rem;max-height:220px;overflow-y:auto}
+    .touchpoint{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem}
+    .tp-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.25rem}
+    .tp-type{font-size:.75rem;font-weight:600;color:var(--orange)}
+    .tp-date{font-size:.68rem;color:var(--text-dim)}
+    .tp-note{font-size:.78rem;color:var(--text-muted);line-height:1.4}
+    .tp-followup{font-size:.7rem;color:var(--teal);margin-top:.25rem}
+    .no-touchpoints{font-size:.78rem;color:var(--text-dim);font-style:italic}
+    .add-note-form{display:flex;flex-direction:column;gap:.5rem}
+    .add-note-row{display:flex;gap:.5rem}
+    .add-note-form textarea{width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:.5rem .65rem;border-radius:5px;font-size:.82rem;font-family:var(--font);resize:vertical;min-height:60px}
+    .add-note-form textarea:focus{outline:none;border-color:var(--orange)}
+    .type-select{background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:.4rem .6rem;border-radius:5px;font-size:.78rem;font-family:var(--font);cursor:pointer}
+    .followup-input{background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:.4rem .6rem;border-radius:5px;font-size:.78rem;font-family:var(--font);flex:1}
+    .loading{display:flex;align-items:center;justify-content:center;padding:3rem;color:var(--text-muted);flex-direction:column;gap:1rem}
+    .spinner{width:28px;height:28px;border:2px solid var(--border2);border-top-color:var(--orange);border-radius:50%;animation:spin .6s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .empty-state{text-align:center;padding:3rem;color:var(--text-dim);font-size:.85rem}
+    #toast{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;padding:.65rem 1.1rem;font-size:.82rem;color:var(--text);opacity:0;transform:translateY(8px);transition:all .2s;pointer-events:none;z-index:999;max-width:320px}
+    #toast.show{opacity:1;transform:translateY(0)}
+    #toast.success{border-color:var(--green);color:var(--green)}
+    #toast.error{border-color:var(--red);color:var(--red)}
+    ::-webkit-scrollbar{width:6px;height:6px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+    .route-tag{font-size:.65rem;color:var(--text-dim);background:var(--surface2);padding:.15rem .4rem;border-radius:3px}
+    .last-updated{font-size:.72rem;color:var(--text-dim)}
+    @media(max-width:600px){.prospects-grid{grid-template-columns:1fr}.pipeline-stages{gap:.35rem}.briefing-stats{gap:1rem}}
   </style>
 </head>
 <body>
 
-<!-- Header -->
 <header class="header">
   <div class="header-left">
     <a href="mission-control.html" class="nav-back">← Mission Control</a>
@@ -386,18 +162,15 @@
   </div>
 </header>
 
-<!-- Due Banner -->
 <div id="due-banner">
   🔴 <strong>Follow-ups overdue:</strong>
   <div class="due-items" id="due-items"></div>
 </div>
 
-<!-- Pipeline Summary Bar -->
 <div class="pipeline-bar">
   <div class="pipeline-stages" id="pipeline-stages"></div>
 </div>
 
-<!-- Route Tabs -->
 <div class="tabs-bar">
   <button class="tab active" data-route="all" onclick="switchTab(this)">All</button>
   <button class="tab" data-route="route1_edina" onclick="switchTab(this)">Route 1 · Edina</button>
@@ -405,107 +178,171 @@
   <button class="tab" data-route="route3_eagan" onclick="switchTab(this)">Route 3 · Eagan</button>
 </div>
 
-<!-- Main -->
 <div class="main">
   <div id="prospects-container">
     <div class="loading"><div class="spinner"></div><span>Loading prospects…</span></div>
   </div>
 </div>
 
-<!-- Toast -->
 <div id="toast"></div>
 
 <script>
-const SUPABASE_URL = 'https://npnqnsjmcyzkpoqynadr.supabase.co';
-const SERVICE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbnFuc2ptY3l6a3BvcXluYWRyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTcyNzEwNywiZXhwIjoyMDg1MzAzMTA3fQ.RNnZZc75S8pLCBK1WBk4orHa19dGbSBUlclPqWbo22E';
+const SUPABASE_URL='https://npnqnsjmcyzkpoqynadr.supabase.co';
+const SERVICE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbnFuc2ptY3l6a3BvcXluYWRyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTcyNzEwNywiZXhwIjoyMDg1MzAzMTA3fQ.RNnZZc75S8pLCBK1WBk4orHa19dGbSBUlclPqWbo22E';
+const HEADERS={'apikey':SERVICE_KEY,'Authorization':`Bearer ${SERVICE_KEY}`,'Content-Type':'application/json'};
 
-const HEADERS = {
-  'apikey': SERVICE_KEY,
-  'Authorization': `Bearer ${SERVICE_KEY}`,
-  'Content-Type': 'application/json',
-  'Prefer': 'return=representation'
+const STAGE_ORDER=['researched','contacted','replied','meeting_scheduled','demo_done','proposal','closed_won','closed_lost'];
+const STAGE_LABELS={researched:'Researched',contacted:'Contacted',replied:'Replied',meeting_scheduled:'Meeting',demo_done:'Demo Done',proposal:'Proposal',closed_won:'Won ✓',closed_lost:'Lost ✗'};
+const NEXT_STAGE={
+  researched:        {stage:'contacted',         label:'→ Mark Contacted'},
+  contacted:         {stage:'replied',            label:'→ Mark Replied'},
+  replied:           {stage:'meeting_scheduled',  label:'→ Schedule Meeting'},
+  meeting_scheduled: {stage:'demo_done',          label:'→ Demo Done'},
+  demo_done:         {stage:'proposal',           label:'→ Send Proposal'},
+  proposal:          {stage:'closed_won',         label:'→ Mark Won'},
+  closed_won:null, closed_lost:null
 };
+const TYPE_ICONS={call:'📞',email:'📧',visit:'🏥',voicemail:'📱',note:'📝'};
 
-const STAGE_ORDER  = ['researched','contacted','replied','meeting_scheduled','demo_done','proposal','closed_won','closed_lost'];
-const STAGE_LABELS = {
-  researched: 'Researched', contacted: 'Contacted', replied: 'Replied',
-  meeting_scheduled: 'Meeting', demo_done: 'Demo Done', proposal: 'Proposal',
-  closed_won: 'Won ✓', closed_lost: 'Lost ✗'
-};
+let allProspects=[];
+let currentRoute='all';
 
-const NEXT_STAGE = {
-  researched:        { stage: 'contacted',         label: '→ Mark Contacted' },
-  contacted:         { stage: 'replied',            label: '→ Mark Replied' },
-  replied:           { stage: 'meeting_scheduled',  label: '→ Schedule Meeting' },
-  meeting_scheduled: { stage: 'demo_done',          label: '→ Demo Done' },
-  demo_done:         { stage: 'proposal',           label: '→ Send Proposal' },
-  proposal:          { stage: 'closed_won',         label: '→ Mark Won' },
-  closed_won: null,
-  closed_lost: null
-};
+function todayStr(){return new Date().toISOString().slice(0,10)}
 
-const TYPE_ICONS = { call: '📞', email: '📧', visit: '🏥', voicemail: '📱', note: '📝' };
-
-let allProspects = [];
-let currentRoute  = 'all';
-
-/* ─── API ─────────────────────────────────────────────── */
-async function apiFetch(path, opts = {}) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: HEADERS, ...opts });
-  if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
-  const text = await res.text();
-  return text ? JSON.parse(text) : null;
+async function apiFetch(path,opts={}){
+  const isWrite=opts.method&&['POST','PATCH','DELETE'].includes(opts.method);
+  const headers={...HEADERS,...(isWrite?{'Prefer':'return=representation'}:{}),...(opts.headers||{})};
+  const res=await fetch(`${SUPABASE_URL}/rest/v1/${path}`,{...opts,headers});
+  if(!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
+  const txt=await res.text();
+  return txt?JSON.parse(txt):null;
 }
 
-/* ─── Load ────────────────────────────────────────────── */
-async function loadProspects() {
-  try {
-    allProspects = await apiFetch('stericube_prospects?order=route.asc,priority.desc,facility.asc');
+async function loadProspects(){
+  try{
+    allProspects=await apiFetch('stericube_prospects?order=route.asc,priority.desc,facility.asc');
     renderAll();
-    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
-  } catch (e) {
-    document.getElementById('prospects-container').innerHTML =
-      `<div class="empty-state">⚠️ Failed to load: ${e.message}</div>`;
+    document.getElementById('last-updated').textContent='Updated '+new Date().toLocaleTimeString();
+  }catch(e){
+    document.getElementById('prospects-container').innerHTML=`<div class="empty-state">⚠️ Failed to load: ${e.message}</div>`;
   }
 }
 
-/* ─── Render All ──────────────────────────────────────── */
-function renderAll() {
+function renderAll(){
   renderPipelineSummary();
   renderDueBanner();
   renderProspects();
 }
 
-function renderPipelineSummary() {
-  const counts = {};
-  STAGE_ORDER.forEach(s => counts[s] = 0);
-  allProspects.forEach(p => { if (counts[p.stage] !== undefined) counts[p.stage]++; });
-  document.getElementById('pipeline-stages').innerHTML = STAGE_ORDER.map(stage => `
-    <div class="stage-pill ${stage}">
-      <span>${STAGE_LABELS[stage]}</span>
-      <span class="count">${counts[stage]}</span>
-    </div>
+function renderPipelineSummary(){
+  const counts={};
+  STAGE_ORDER.forEach(s=>counts[s]=0);
+  allProspects.forEach(p=>{if(counts[p.stage]!==undefined)counts[p.stage]++;});
+  document.getElementById('pipeline-stages').innerHTML=STAGE_ORDER.map(s=>`
+    <div class="stage-pill ${s}"><span>${STAGE_LABELS[s]}</span><span class="count">${counts[s]}</span></div>
   `).join('');
 }
 
-function renderDueBanner() {
-  const today = todayStr();
-  const overdue = allProspects.filter(p => p.next_followup_date && p.next_followup_date.slice(0,10) < today);
-  const banner  = document.getElementById('due-banner');
-  if (overdue.length === 0) { banner.classList.remove('visible'); return; }
+function renderDueBanner(){
+  const today=todayStr();
+  const overdue=allProspects.filter(p=>p.next_followup_date&&p.next_followup_date.slice(0,10)<today);
+  const banner=document.getElementById('due-banner');
+  if(overdue.length===0){banner.classList.remove('visible');return;}
   banner.classList.add('visible');
-  document.getElementById('due-items').innerHTML = overdue.map(p =>
+  document.getElementById('due-items').innerHTML=overdue.map(p=>
     `<span class="due-chip">${escHtml(p.facility.split(' ').slice(0,3).join(' '))} — ${p.next_followup_date.slice(0,10)}</span>`
   ).join('');
 }
 
-/* ─── Route Briefing ──────────────────────────────────── */
-function routeBriefingHtml(prospects) {
-  const today = todayStr();
-  const total = prospects.length;
-  if (total === 0) return '';
+function routeBriefingHtml(prospects){
+  if(prospects.length===0) return '';
+  const today=todayStr();
+  const total=prospects.length;
+  const contacted=prospects.filter(p=>p.stage!=='researched').length;
+  const uncontacted=total-contacted;
+  const overdue=prospects.filter(p=>p.next_followup_date&&p.next_followup_date.slice(0,10)<today);
+  const dueToday=prospects.filter(p=>p.next_followup_date&&p.next_followup_date.slice(0,10)===today);
+  const overdueHtml=overdue.length>0
+    ?`<div class="overdue-chips">${overdue.map(p=>`<span class="overdue-chip">${escHtml(p.facility.split(' ').slice(0,2).join(' '))}</span>`).join('')}</div>`
+    :`<span style="color:var(--green)">✓ None overdue</span>`;
 
-  const contacted = prospects.filter(p => p.stage !== 'researched').length;
-  const uncontacted = total - contacted;
-  const overdue = prospects.filter(p => p.next_followup_date && p.next_followup_date.slice(0,10) < today);
-  const dueToday = prospects
+  return `<div class="briefing-card">
+    <div class="briefing-header">
+      <span style="font-size:1.1rem">☀️</span>
+      <h3>Morning Briefing</h3>
+      <span class="date">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})}</span>
+    </div>
+    <div class="briefing-stats">
+      <div class="bstat"><div class="val">${total}</div><div class="lbl">Total Prospects</div></div>
+      <div class="briefing-divider"></div>
+      <div class="bstat"><div class="val ok">${contacted}</div><div class="lbl">Contacted</div></div>
+      <div class="bstat"><div class="val${uncontacted>0?' warn':''}">${uncontacted}</div><div class="lbl">Not Yet Contacted</div></div>
+      <div class="briefing-divider"></div>
+      <div class="bstat"><div class="val${overdue.length>0?' warn':' ok'}">${overdue.length}</div><div class="lbl">Overdue</div></div>
+      <div class="bstat"><div class="val${dueToday.length>0?' warn':''}">${dueToday.length}</div><div class="lbl">Due Today</div></div>
+    </div>
+    <div class="briefing-footer">
+      🚗 ~15 min between stops &nbsp;|&nbsp;
+      ${overdue.length>0?`⚠️ Overdue: ${overdueHtml}`:''}
+    </div>
+  </div>`;
+}
+
+function renderProspects(){
+  const filtered=currentRoute==='all'?allProspects:allProspects.filter(p=>p.route===currentRoute);
+  const container=document.getElementById('prospects-container');
+  if(filtered.length===0){container.innerHTML='<div class="empty-state">No prospects for this route yet.</div>';return;}
+  const briefing=currentRoute==='all'?'':routeBriefingHtml(filtered);
+  container.innerHTML=briefing+`<div class="prospects-grid">${filtered.map(renderCard).join('')}</div>`;
+}
+
+function renderCard(p){
+  const today=todayStr();
+  const lcd=p.last_contact_date?p.last_contact_date.slice(0,10):null;
+  const nfd=p.next_followup_date?p.next_followup_date.slice(0,10):null;
+
+  let daysSince='—';
+  if(lcd){
+    const diff=Math.floor((Date.now()-new Date(lcd+'T12:00:00'))/86400000);
+    daysSince=diff===0?'Today':diff===1?'Yesterday':`${diff}d ago`;
+  }
+
+  let nfdClass='';
+  let nfdDisplay=nfd||'—';
+  if(nfd){
+    if(nfd<today)nfdClass='overdue';
+    else if(nfd===today)nfdClass='due-today';
+  }
+
+  const stage=p.stage||'researched';
+  const stageName=stage.replace(/_/g,' ');
+
+  // Contact action buttons
+  const callBtn=p.contact_phone
+    ?`<a class="btn btn-sm btn-call" href="tel:${escAttr(p.contact_phone)}" onclick="event.stopPropagation()">📞 Call</a>`
+    :'';
+  const emailBtn=p.contact_email
+    ?`<a class="btn btn-sm btn-email" href="mailto:${escAttr(p.contact_email)}" onclick="event.stopPropagation()">📧 Email</a>`
+    :'';
+  const mapBtn=p.address
+    ?`<a class="btn btn-sm btn-map" href="https://maps.google.com/?q=${encodeURIComponent(p.address)}" target="_blank" onclick="event.stopPropagation()">🗺️ Directions</a>`
+    :'';
+
+  // Stage advance button
+  const next=NEXT_STAGE[stage];
+  const advBtn=next
+    ?`<button class="btn btn-sm btn-advance" id="adv-${p.id}" onclick="advanceStage('${p.id}','${next.stage}',this);event.stopPropagation()">${next.label}</button>`
+    :'';
+
+  return `
+  <div class="prospect-card" id="card-${p.id}">
+    <div class="card-top" onclick="toggleCard('${p.id}')">
+      <div class="card-top-left">
+        <div class="facility-name">${escHtml(p.facility)}</div>
+        <div class="facility-address">${escHtml(p.address||'')}</div>
+      </div>
+      <div class="card-badges">
+        <span class="stage-badge ${stage}" id="badge-${p.id}">${stageName}</span>
+        <div style="display:flex;align-items:center;gap:.35rem;justify-content:flex-end">
+          <span class="priority-dot ${p.priority||'medium'}"></span>
+          <span
