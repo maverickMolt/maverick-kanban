@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SteriCube Pipeline Tracker</title>
+  <style>
+    :root {
+      --bg: #0f0f0f;
+      --bg2: #151515;
+      --surface: #1a1a1a;
+      --surface2: #222222;
+      --surface3: #2a2a2a;
+      --border: #2a2a2a;
+      --border2: #333;
+      --orange: #ff9500;
+      --orange-dim: rgba(255, 149, 0, 0.1);
+      --orange-glow: rgba(255, 149, 0, 0.2);
+      --text: #f0f0f0;
+      --text-muted: #888;
+      --text-dim: #555;
+      --green: #30d158;
+      --red: #ff453a;
+      --blue: #0a84ff;
+      --purple: #bf5af2;
+      --yellow: #ffd60a;
+      --teal: #32d2d2;
+      --gray: #6e6e73;
+      --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', sans-serif;
+      --font-mono: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 0.875rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .header h1 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--orange);
+      letter-spacing: 0.01em;
+    }
+
+    .header-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .btn {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text-muted);
+      padding: 0.35rem 0.85rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      font-family: var(--font);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.15s;
+    }
+
+    .btn:hover { color: var(--text); border-color: var(--orange); background: var(--orange-dim); }
+    .btn.active { border-color: var(--orange); color: var(--orange); background: var(--orange-dim); }
+    .btn-primary { background: var(--orange); color: #000; border-color: var(--orange); font-weight: 600; }
+    .btn-primary:hover { background: #e08500; color: #000; }
+
+    .nav-back {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .nav-back:hover { color: var(--orange); }
+
+    /* ── Due Banner ── */
+    #due-banner {
+      display: none;
+      background: rgba(255, 69, 58, 0.12);
+      border-bottom: 1px solid rgba(255, 69, 58, 0.3);
+      padding: 0.65rem 1.5rem;
+      font-size: 0.82rem;
+      color: var(--red);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    #due-banner.hidden { display: none; }
+
+    .due-items {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-left: 0.5rem;
+    }
+
+    .due-chip {
+      background: rgba(255, 69, 58, 0.15);
+      border: 1px solid rgba(255, 69, 58, 0.3);
+      border-radius: 4px;
+      padding: 0.15rem 0.5rem;
+      font-size: 0.75rem;
+      color: var(--red);
+    }
+
+    /* ── Pipeline Summary Bar ── */
+    .pipeline-bar {
+      padding: 1rem 1.5rem 0;
+    }
+
+    .pipeline-stages {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .stage-pill {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.4rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .stage-pill .count {
+      font-size: 0.85rem;
+      font-weight: 700;
+    }
+
+    .stage-pill:hover { transform: translateY(-1px); }
+
+    .stage-pill.researched       { background: rgba(110,110,115,0.15); border-color: rgba(110,110,115,0.3); color: #9e9ea6; }
+    .stage-pill.contacted        { background: rgba(10,132,255,0.15); border-color: rgba(10,132,255,0.3); color: #4da6ff; }
+    .stage-pill.replied          { background: rgba(191,90,242,0.15); border-color: rgba(191,90,242,0.3); color: #d080ff; }
+    .stage-pill.meeting_scheduled { background: rgba(255,149,0,0.15); border-color: rgba(255,149,0,0.3); color: var(--orange); }
+    .stage-pill.demo_done        { background: rgba(255,214,10,0.15); border-color: rgba(255,214,10,0.3); color: #ffd60a; }
+    .stage-pill.proposal         { background: rgba(50,210,210,0.15); border-color: rgba(50,210,210,0.3); color: var(--teal); }
+    .stage-pill.closed_won       { background: rgba(48,209,88,0.15); border-color: rgba(48,209,88,0.3); color: var(--green); }
+    .stage-pill.closed_lost      { background: rgba(255,69,58,0.15); border-color: rgba(255,69,58,0.3); color: var(--red); }
+
+    /* ── Route Tabs ── */
+    .tabs-bar {
+      padding: 1rem 1.5rem 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 0;
+    }
+
+    .tab {
+      padding: 0.6rem 1.25rem;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-family: var(--font);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--orange); border-bottom-color: var(--orange); }
+
+    /* ── Main Content ── */
+    .main {
+      padding: 1.25rem 1.5rem;
+    }
+
+    /* ── Prospect Grid ── */
+    .prospects-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 1rem;
+    }
+
+    /* ── Prospect Card ── */
+    .prospect-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: border-color 0.15s, transform 0.15s;
+      cursor: pointer;
+    }
+
+    .prospect-card:hover {
+      border-color: var(--border2);
+      transform: translateY(-1px);
+    }
+
+    .prospect-card.expanded {
+      border-color: var(--orange);
+    }
+
+    .card-header {
+      padding: 0.875rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.5rem;
+    }
+
+    .card-header-left { flex: 1; min-width: 0; }
+
+    .facility-name {
+      font-size: 0.92rem;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 0.25rem;
+    }
+
+    .facility-address {
+      font-size: 0.73rem;
+      color: var(--text-muted);
+    }
+
+    .card-badges {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.3rem;
+      flex-shrink: 0;
+    }
+
+    .stage-badge {
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+
+    .stage-badge.researched       { background: rgba(110,110,115,0.2); color: #9e9ea6; }
+    .stage-badge.contacted        { background: rgba(10,132,255,0.2); color: #4da6ff; }
+    .stage-badge.replied          { background: rgba(191,90,242,0.2); color: #d080ff; }
+    .stage-badge.meeting_scheduled { background: rgba(255,149,0,0.2); color: var(--orange); }
+    .stage-badge.demo_done        { background: rgba(255,214,10,0.2); color: #ffd60a; }
+    .stage-badge.proposal         { background: rgba(50,210,210,0.2); color: var(--teal); }
+    .stage-badge.closed_won       { background: rgba(48,209,88,0.2); color: var(--green); }
+    .stage-badge.closed_lost      { background: rgba(255,69,58,0.2); color: var(--red); }
+
+    .priority-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .priority-dot.high   { background: var(--red); }
+    .priority-dot.medium { background: var(--yellow); }
+    .priority-dot.low    { background: var(--gray); }
+
+    .card-meta {
+      padding: 0 1rem 0.75rem;
+      display: flex;
+      gap: 1rem;
+    }
+
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+
+    .meta-label {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .meta-value {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .meta-value.overdue { color: var(--red); font-weight: 600; }
+    .meta-value.due-today { color: var(--yellow); font-weight: 600; }
+
+    .card-notes {
+      padding: 0 1rem 0.75rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    /* ── Expanded Card Detail ── */
+    .card-detail {
+      display: none;
+      border-top: 1px solid var(--border);
+      background: var(--bg2);
+    }
+
+    .prospect-card.expanded .card-detail { display: block; }
+
+    .detail-section {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .detail-section:last-child { border-bottom: none; }
+
+    .detail-section h4 {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin-bottom: 0.65rem;
+    }
+
+    .contact-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .contact-field label {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      display: block;
+      margin-bottom: 0.2rem;
+    }
+
+    .contact-field input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      padding: 0.35rem 0.5rem;
+      border-radius: 5px;
+      font-size: 0.78rem;
+      font-family: var(--font);
+      transition: border-color 0.15s;
+    }
+
+    .contact-field input:focus {
+      outline: none;
+      border-color: var(--orange);
+    }
+
+    /* Stage change */
+    .stage-update {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .stage-select {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      padding: 0.4rem 0.6rem;
+      border-radius: 5px;
+      font-size: 0.82rem;
+      font-family: var(--font);
+      cursor: pointer;
+    }
+
+    .stage-select:focus { outline: none; border-color: var(--orange); }
+
+    /* Touchpoints */
+    .touchpoint-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      max-height: 220px;
+      overflow-y: auto;
+    }
+
+    .touchpoint {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.5rem 0.75rem;
+    }
+
+    .tp-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.25rem;
+    }
+
+    .tp-type {
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--orange);
+    }
+
+    .tp-date {
+      font-size: 0.68rem;
+      color: var(--text-dim);
+    }
+
+    .tp-note {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    .tp-followup {
+      font-size: 0.7rem;
+      color: var(--teal);
+      margin-top: 0.25rem;
+    }
+
+    .no-touchpoints {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      font-style: italic;
+    }
+
+    /* Add note form */
+    .add-note-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .add-note-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .add-note-form textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      padding: 0.5rem 0.65rem;
+      border-radius: 5px;
+      font-size: 0.82rem;
+      font-family: var(--font);
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .add-note-form textarea:focus {
+      outline: none;
+      border-color: var(--orange);
+    }
+
+    .type-select {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      padding: 0.4rem 0.6rem;
+      border-radius: 5px;
+      font-size: 0.78rem;
+      font-family: var(--font);
+      cursor: pointer;
+    }
+
+    .followup-input {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      padding: 0.4rem 0.6rem;
+      border-radius: 5px;
+      font-size: 0.78rem;
+      font-family: var(--font);
+      flex: 1;
+    }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem;
+      color: var(--text-muted);
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .spinner {
+      width: 28px;
+      height: 28px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--orange);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-dim);
+      font-size: 0.85rem;
+    }
+
+    /* Notification toast */
+    #toast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      padding: 0.65rem 1.1rem;
+      font-size: 0.82rem;
+      color: var(--text);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: all 0.2s;
+      pointer-events: none;
+      z-index: 999;
+      max-width: 320px;
+    }
+
+    #toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    #toast.success { border-color: var(--green); color: var(--green); }
+    #toast.error { border-color: var(--red); color: var(--red); }
+
+    /* Scrollbar styling */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      .prospects-grid { grid-template-columns: 1fr; }
+      .pipeline-stages { gap: 0.35rem; }
+    }
+
+    .route-tag {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      background: var(--surface2);
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+    }
+
+    .last-updated {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-left">
+    <a href="mission-control.html" class="nav-back">← Mission Control</a>
+    <div style="width:1px;height:20px;background:var(--border2)"></div>
+    <div>
+      <h1>🏥 SteriCube Pipeline</h1>
+      <div class="header-subtitle">Twin Cities Territory · Minneapolis/St. Paul</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <span class="last-updated" id="last-updated">Loading...</span>
+    <button class="btn" onclick="loadProspects()">↻ Refresh</button>
+  </div>
+</header>
+
+<!-- Due Banner -->
+<div id="due-banner" class="hidden">
+  🔴 <strong>Follow-ups overdue:</strong>
+  <div class="due-items" id="due-items"></div>
+</div>
+
+<!-- Pipeline Summary Bar -->
+<div class="pipeline-bar">
+  <div class="pipeline-stages" id="pipeline-stages">
+    <!-- filled by JS -->
+  </div>
+</div>
+
+<!-- Route Tabs -->
+<div class="tabs-bar">
+  <button class="tab active" data-route="all" onclick="switchTab(this)">All</button>
+  <button class="tab" data-route="route1_edina" onclick="switchTab(this)">Route 1 · Edina</button>
+  <button class="tab" data-route="route2_mpls" onclick="switchTab(this)">Route 2 · Minneapolis</button>
+  <button class="tab" data-route="route3_eagan" onclick="switchTab(this)">Route 3 · Eagan</button>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <div id="prospects-container">
+    <div class="loading"><div class="spinner"></div><span>Loading prospects…</span></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://npnqnsjmcyzkpoqynadr.supabase.co';
+const SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbnFuc2ptY3l6a3BvcXluYWRyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTcyNzEwNywiZXhwIjoyMDg1MzAzMTA3fQ.RNnZZc75S8pLCBK1WBk4orHa19dGbSBUlclPqWbo22E';
+
+const HEADERS = {
+  'apikey': SERVICE_KEY,
+  'Authorization': `Bearer ${SERVICE_KEY}`,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation'
+};
+
+const STAGE_ORDER = ['researched','contacted','replied','meeting_scheduled','demo_done','proposal','closed_won','closed_lost'];
+const STAGE_LABELS = {
+  researched: 'Researched',
+  contacted: 'Contacted',
+  replied: 'Replied',
+  meeting_scheduled: 'Meeting',
+  demo_done: 'Demo Done',
+  proposal: 'Proposal',
+  closed_won: 'Won ✓',
+  closed_lost: 'Lost ✗'
+};
+
+let allProspects = [];
+let currentRoute = 'all';
+let touchpointCache = {};
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: HEADERS, ...opts });
+  if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+async function loadProspects() {
+  try {
+    allProspects = await apiFetch('stericube_prospects?order=route.asc,priority.desc,facility.asc');
+    renderAll();
+    document.getElementById('last-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  } catch (e) {
+    document.getElementById('prospects-container').innerHTML =
+      `<div class="empty-state">⚠️ Failed to load: ${e.message}</div>`;
+  }
+}
+
+function renderAll() {
+  renderPipelineSummary();
+  renderDueBanner();
+  renderProspects();
+}
+
+function renderPipelineSummary() {
+  const counts = {};
+  STAGE_ORDER.forEach(s => counts[s] = 0);
+  allProspects.forEach(p => { if (counts[p.stage] !== undefined) counts[p.stage]++; });
+
+  const container = document.getElementById('pipeline-stages');
+  container.innerHTML = STAGE_ORDER.map(stage => `
+    <div class="stage-pill ${stage}" title="${STAGE_LABELS[stage]}">
+      <span>${STAGE_LABELS[stage]}</span>
+      <span class="count">${counts[stage]}</span>
+    </div>
+  `).join('');
+}
+
+function renderDueBanner() {
+  const today = new Date().toISOString().slice(0, 10);
+  const overdue = allProspects.filter(p => p.next_followup_date && p.next_followup_date.slice(0,10) < today);
+  const banner = document.getElementById('due-banner');
+  const items = document.getElementById('due-items');
+
+  if (overdue.length === 0) {
+    banner.classList.add('hidden');
+    return;
+  }
+
+  banner.classList.remove('hidden');
+  items.innerHTML = overdue.map(p =>
+    `<span class="due-chip">${p.facility.split(' ').slice(0,3).join(' ')} — ${p.next_followup_date.slice(0,10)}</span>`
+  ).join('');
+}
+
+function renderProspects() {
+  const filtered = currentRoute === 'all'
+    ? allProspects
+    : allProspects.filter(p => p.route === currentRoute);
+
+  const container = document.getElementById('prospects-container');
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty-state">No prospects for this route yet.</div>';
+    return;
+  }
+
+  container.innerHTML = `<div class="prospects-grid">${filtered.map(renderCard).join('')}</div>`;
+}
+
+function renderCard(p) {
+  const today = new Date().toISOString().slice(0, 10);
+  const lcd = p.last_contact_date ? p.last_contact_date.slice(0,10) : null;
+  const nfd = p.next_followup_date ? p.next_followup_date.slice(0,10) : null;
+
+  let daysSince = '—';
+  if (lcd) {
+    const diff = Math.floor((Date.now() - new Date(lcd + 'T12:00:00')) / 86400000);
+    daysSince = diff === 0 ? 'Today' : diff === 1 ? 'Yesterday' : `${diff}d ago`;
+  }
+
+  let nfdClass = '';
+  let nfdDisplay = nfd || '—';
+  if (nfd) {
+    if (nfd < today) nfdClass = 'overdue';
+    else if (nfd === today) nfdClass = 'due-today';
+  }
+
+  const stageName = (p.stage || 'researched').replace(/_/g,' ');
+
+  return `
+    <div class="prospect-card" id="card-${p.id}" onclick="toggleCard('${p.id}')">
+      <div class="card-header">
+        <div class="card-header-left">
+          <div class="facility-name">${escHtml(p.facility)}</div>
+          <div class="facility-address">${escHtml(p.address || '')}</div>
+        </div>
+        <div class="card-badges">
+          <span class="stage-badge ${p.stage || 'researched'}">${stageName}</span>
+          <div style="display:flex;align-items:center;gap:0.35rem;justify-content:flex-end">
+            <span class="priority-dot ${p.priority || 'medium'}"></span>
+            <span class="route-tag">${routeShort(p.route)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-meta">
+        <div class="meta-item">
+          <span class="meta-label">Last Contact</span>
+          <span class="meta-value">${daysSince}</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Next Followup</span>
+          <span class="meta-value ${nfdClass}">${nfdDisplay}</span>
+        </div>
+        ${p.contact_name ? `
+        <div class="meta-item">
+          <span class="meta-label">Contact</span>
+          <span class="meta-value">${escHtml(p.contact_name)}</span>
+        </div>` : ''}
+      </div>
+
+      ${p.notes ? `<div class="card-notes">${escHtml(p.notes)}</div>` : ''}
+
+      <!-- Expanded Detail -->
+      <div class="card-detail" id="detail-${p.id}">
+        <!-- Contact Info -->
+        <div class="detail-section">
+          <h4>Contact Info</h4>
+          <div class="contact-grid">
+            <div class="contact-field">
+              <label>Name</label>
+              <input type="text" placeholder="Contact name" value="${escAttr(p.contact_name || '')}"
+                id="inp-contact_name-${p.id}" onchange="saveContact('${p.id}')">
+            </div>
+            <div class="contact-field">
+              <label>Role/Title</label>
+              <input type="text" placeholder="e.g. OR Manager" value="${escAttr(p.contact_role || '')}"
+                id="inp-contact_role-${p.id}" onchange="saveContact('${p.id}')">
+            </div>
+            <div class="contact-field">
+              <label>Phone</label>
+              <input type="tel" placeholder="612-555-0100" value="${escAttr(p.contact_phone || '')}"
+                id="inp-contact_phone-${p.id}" onchange="saveContact('${p.id}')">
+            </div>
+            <div class="contact-field">
+              <label>Email</label>
+              <input type="email" placeholder="contact@hospital.org" value="${escAttr(p.contact_email || '')}"
+                id="inp-contact_email-${p.id}" onchange="saveContact('${p.id}')">
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage Update -->
+        <div class="detail-section">
+          <h4>Pipeline Stage</h4>
+          <div class="stage-update">
+            <select class="stage-select" id="stage-${p.id}">
+              <option value="researched" ${p.stage==='researched'?'selected':''}>Researched</option>
+              <option value="contacted" ${p.stage==='contacted'?'selected':''}>Contacted</option>
+              <option value="replied" ${p.stage==='replied'?'selected':''}>Replied</option>
+              <option value="meeting_scheduled" ${p.stage==='meeting_scheduled'?'selected':''}>Meeting Scheduled</option>
+              <option value="demo_done" ${p.stage==='demo_done'?'selected':''}>Demo Done</option>
+              <option value="proposal" ${p.stage==='proposal'?'selected':''}>Proposal Sent</option>
+              <option value="closed_won" ${p.stage==='closed_won'?'selected':''}>Closed — Won ✓</option>
+              <option value="closed_lost" ${p.stage==='closed_lost'?'selected':''}>Closed — Lost ✗</option>
+            </select>
+            <button class="btn btn-primary" onclick="updateStage('${p.id}'); event.stopPropagation()">Update</button>
+          </div>
+          <div style="margin-top:0.65rem">
+            <label style="font-size:0.65rem;color:var(--text-dim);display:block;margin-bottom:0.2rem">NOTES</label>
+            <textarea id="inp-notes-${p.id}" style="width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:0.45rem 0.6rem;border-radius:5px;font-size:0.8rem;font-family:var(--font);resize:vertical;min-height:50px" 
+              placeholder="General notes about this account..."
+              onchange="saveNotes('${p.id}')">${escHtml(p.notes || '')}</textarea>
+          </div>
+        </div>
+
+        <!-- Touchpoint History -->
+        <div class="detail-section">
+          <h4>Touchpoint History</h4>
+          <div class="touchpoint-list" id="tp-list-${p.id}">
+            <div style="font-size:0.75rem;color:var(--text-dim)">Loading history…</div>
+          </div>
+        </div>
+
+        <!-- Add Note -->
+        <div class="detail-section">
+          <h4>Log Touchpoint</h4>
+          <div class="add-note-form">
+            <textarea id="tp-note-${p.id}" placeholder="What happened? What was said?..." onclick="event.stopPropagation()"></textarea>
+            <div class="add-note-row">
+              <select class="type-select" id="tp-type-${p.id}" onclick="event.stopPropagation()">
+                <option value="note">📝 Note</option>
+                <option value="call">📞 Call</option>
+                <option value="email">📧 Email</option>
+                <option value="visit">🚪 Visit</option>
+                <option value="voicemail">📱 Voicemail</option>
+              </select>
+              <input type="date" class="followup-input" id="tp-followup-${p.id}"
+                placeholder="Next followup" onclick="event.stopPropagation()">
+              <button class="btn btn-primary" onclick="addTouchpoint('${p.id}'); event.stopPropagation()">Log</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function routeShort(r) {
+  switch(r) {
+    case 'route1_edina': return 'R1·Edina';
+    case 'route2_mpls':  return 'R2·MPLS';
+    case 'route3_eagan': return 'R3·Eagan';
+    default: return r || '';
+  }
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escAttr(s) {
+  return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function switchTab(el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentRoute = el.dataset.route;
+  renderProspects();
+}
+
+async function toggleCard(id) {
+  const card = document.getElementById(`card-${id}`);
+  const isExpanded = card.classList.contains('expanded');
+
+  // Collapse all others
+  document.querySelectorAll('.prospect-card.expanded').forEach(c => {
+    if (c.id !== `card-${id}`) c.classList.remove('expanded');
+  });
+
+  if (isExpanded) {
+    card.classList.remove('expanded');
+  } else {
+    card.classList.add('expanded');
+    await loadTouchpoints(id);
+  }
+}
+
+async function loadTouchpoints(prospectId) {
+  const container = document.getElementById(`tp-list-${prospectId}`);
+  try {
+    const tps = await apiFetch(`stericube_touchpoints?prospect_id=eq.${prospectId}&order=created_at.desc`);
+    touchpointCache[prospectId] = tps;
+
+    if (tps.length === 0) {
+      container.innerHTML = '<div class="no-touchpoints">No touchpoints logged yet.</div>';
+      return;
+    }
+
+    const typeIcon = { call: '📞', email: '📧', visit: '🚪', voicemail: '📱', note: '📝' };
+    container.innerHTML = tps.map(tp => `
+      <div class="touchpoint">
+        <div class="tp-header">
+          <span class="tp-type">${typeIcon[tp.type] || '📝'} ${tp.type}</span>
+          <span class="tp-date">${tp.created_at.slice(0,10)}</span>
+        </div>
+        <div class="tp-note">${escHtml(tp.note)}</div>
+        ${tp.next_followup_date ? `<div class="tp-followup">→ Follow up: ${tp.next_followup_date.slice(0,10)}</div>` : ''}
+      </div>
+    `).join('');
+  } catch(e) {
+    container.innerHTML = `<div class="no-touchpoints">Error loading: ${e.message}</div>`;
+  }
+}
+
+async function updateStage(id) {
+  const select = document.getElementById(`stage-${id}`);
+  const newStage = select.value;
+  try {
+    await apiFetch(`stericube_prospects?id=eq.${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ stage: newStage, updated_at: new Date().toISOString() })
+    });
+
+    // Update local data
+    const p = allProspects.find(x => x.id === id);
+    if (p) p.stage = newStage;
+
+    // Update stage badge in card header
+    const card = document.getElementById(`card-${id}`);
+    const badge = card.querySelector('.stage-badge');
+    badge.className = `stage-badge ${newStage}`;
+    badge.textContent = newStage.replace(/_/g,' ');
+
+    renderPipelineSummary();
+    showToast('Stage updated ✓', 'success');
+  } catch(e) {
+    showToast('Failed: ' + e.message, 'error');
+  }
+}
+
+async function saveContact(id) {
+  const fields = ['contact_name', 'contact_role', 'contact_phone', 'contact_email'];
+  const data = {};
+  fields.forEach(f => {
+    const el = document.getElementById(`inp-${f}-${id}`);
+    if (el) data[f] = el.value || null;
+  });
+  data.updated_at = new Date().toISOString();
+
+  try {
+    await apiFetch(`stericube_prospects?id=eq.${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data)
+    });
+    const p = allProspects.find(x => x.id === id);
+    if (p) Object.assign(p, data);
+    showToast('Contact saved ✓', 'success');
+  } catch(e) {
+    showToast('Save failed: ' + e.message, 'error');
+  }
+}
+
+async function saveNotes(id) {
+  const notes = document.getElementById(`inp-notes-${id}`).value || null;
+  try {
+    await apiFetch(`stericube_prospects?id=eq.${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ notes, updated_at: new Date().toISOString() })
+    });
+    const p = allProspects.find(x => x.id === id);
+    if (p) p.notes = notes;
+    showToast('Notes saved ✓', 'success');
+  } catch(e) {
+    showToast('Save failed: ' + e.message, 'error');
+  }
+}
+
+async function addTouchpoint(prospectId) {
+  const noteEl = document.getElementById(`tp-note-${prospectId}`);
+  const typeEl = document.getElementById(`tp-type-${prospectId}`);
+  const followupEl = document.getElementById(`tp-followup-${prospectId}`);
+
+  const note = noteEl.value.trim();
+  if (!note) { showToast('Add a note first', 'error'); return; }
+
+  const payload = {
+    prospect_id: prospectId,
+    type: typeEl.value,
+    note,
+    next_followup_date: followupEl.value || null
+  };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const prospectPatch = {
+    last_contact_date: today,
+    updated_at: new Date().toISOString()
+  };
+  if (followupEl.value) prospectPatch.next_followup_date = followupEl.value;
+
+  try {
+    await apiFetch('stericube_touchpoints', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    await apiFetch(`stericube_prospects?id=eq.${prospectId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(prospectPatch)
+    });
+
+    // Update local
+    const p = allProspects.find(x => x.id === prospectId);
+    if (p) {
+      p.last_contact_date = today;
+      if (followupEl.value) p.next_followup_date = followupEl.value;
+    }
+
+    // Clear form
+    noteEl.value = '';
+    followupEl.value = '';
+    typeEl.value = 'note';
+
+    // Reload touchpoints
+    delete touchpointCache[prospectId];
+    await loadTouchpoints(prospectId);
+    renderPipelineSummary();
+    renderDueBanner();
+    showToast('Touchpoint logged ✓', 'success');
+  } catch(e) {
+    showToast('Failed: ' + e.message, 'error');
+  }
+}
+
+let toastTimer;
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = '', 2800);
+}
+
+// Init
+loadProspects();
+</script>
+</body>
+</html>
