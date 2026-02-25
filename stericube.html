@@ -334,6 +334,9 @@ function renderCard(p){
     ?`<button class="btn btn-sm btn-advance" id="adv-${p.id}" onclick="advanceStage('${p.id}','${next.stage}',this);event.stopPropagation()">${next.label}</button>`
     :'';
 
+  const contactNameMeta = p.contact_name
+    ? `<div class="meta-item"><span class="meta-label">Contact</span><span class="meta-value">${escHtml(p.contact_name)}</span></div>` : '';
+
   return `
   <div class="prospect-card" id="card-${p.id}">
     <div class="card-top" onclick="toggleCard('${p.id}')">
@@ -345,4 +348,322 @@ function renderCard(p){
         <span class="stage-badge ${stage}" id="badge-${p.id}">${stageName}</span>
         <div style="display:flex;align-items:center;gap:.35rem;justify-content:flex-end">
           <span class="priority-dot ${p.priority||'medium'}"></span>
-          <span
+          <span class="route-tag">${routeShort(p.route)}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-meta" onclick="toggleCard('${p.id}')">
+      <div class="meta-item">
+        <span class="meta-label">Last Contact</span>
+        <span class="meta-value">${daysSince}</span>
+      </div>
+      <div class="meta-item">
+        <span class="meta-label">Next Followup</span>
+        <span class="meta-value ${nfdClass}">${nfdDisplay}</span>
+      </div>
+      ${contactNameMeta}
+    </div>
+
+    <div class="card-actions">
+      ${callBtn}${emailBtn}${mapBtn}${advBtn}
+    </div>
+
+    ${p.notes ? `<div class="card-notes">${escHtml(p.notes)}</div>` : ''}
+
+    <div class="card-detail" id="detail-${p.id}">
+
+      <div class="detail-section">
+        <h4>Contact Info</h4>
+        <div class="contact-grid">
+          <div class="contact-field">
+            <label>Name</label>
+            <input type="text" placeholder="Contact name" value="${escAttr(p.contact_name||'')}"
+              id="inp-contact_name-${p.id}" onchange="saveContact('${p.id}')">
+          </div>
+          <div class="contact-field">
+            <label>Role/Title</label>
+            <input type="text" placeholder="e.g. OR Manager" value="${escAttr(p.contact_role||'')}"
+              id="inp-contact_role-${p.id}" onchange="saveContact('${p.id}')">
+          </div>
+          <div class="contact-field">
+            <label>Phone</label>
+            <input type="tel" placeholder="612-555-0100" value="${escAttr(p.contact_phone||'')}"
+              id="inp-contact_phone-${p.id}" onchange="saveContact('${p.id}')">
+          </div>
+          <div class="contact-field">
+            <label>Email</label>
+            <input type="email" placeholder="contact@hospital.org" value="${escAttr(p.contact_email||'')}"
+              id="inp-contact_email-${p.id}" onchange="saveContact('${p.id}')">
+          </div>
+        </div>
+        <div class="contact-cta">
+          ${p.contact_phone ? `<a class="btn btn-sm btn-call" href="tel:${escAttr(p.contact_phone)}" onclick="event.stopPropagation()">📞 Call</a>` : ''}
+          ${p.contact_email ? `<a class="btn btn-sm btn-email" href="mailto:${escAttr(p.contact_email)}" onclick="event.stopPropagation()">📧 Email</a>` : ''}
+          ${p.address ? `<a class="btn btn-sm btn-map" href="https://maps.google.com/?q=${encodeURIComponent(p.address)}" target="_blank" onclick="event.stopPropagation()">🗺️ Directions</a>` : ''}
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h4>Pipeline Stage</h4>
+        <div class="stage-update">
+          <select class="stage-select" id="stage-${p.id}">
+            ${STAGE_ORDER.map(s => `<option value="${s}" ${p.stage===s?'selected':''}>${STAGE_LABELS[s]}</option>`).join('')}
+          </select>
+          <button class="btn btn-primary" onclick="updateStage('${p.id}'); event.stopPropagation()">Update</button>
+        </div>
+        <div style="margin-top:.65rem">
+          <label style="font-size:.65rem;color:var(--text-dim);display:block;margin-bottom:.2rem">NOTES</label>
+          <textarea id="inp-notes-${p.id}"
+            style="width:100%;background:var(--surface2);border:1px solid var(--border2);color:var(--text);padding:.45rem .6rem;border-radius:5px;font-size:.8rem;font-family:var(--font);resize:vertical;min-height:50px"
+            placeholder="General notes about this account..."
+            onchange="saveNotes('${p.id}')" onclick="event.stopPropagation()">${escHtml(p.notes||'')}</textarea>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h4>Touchpoint History</h4>
+        <div class="touchpoint-list" id="tp-list-${p.id}">
+          <div style="font-size:.75rem;color:var(--text-dim)">Loading history…</div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <h4>Log Touchpoint</h4>
+        <div class="add-note-form">
+          <textarea id="tp-note-${p.id}" placeholder="What happened? What was said?..." onclick="event.stopPropagation()"></textarea>
+          <div class="add-note-row">
+            <select class="type-select" id="tp-type-${p.id}" onclick="event.stopPropagation()">
+              <option value="note">📝 Note</option>
+              <option value="call">📞 Call</option>
+              <option value="email">📧 Email</option>
+              <option value="visit">🏥 Visit</option>
+              <option value="voicemail">📱 Voicemail</option>
+            </select>
+            <input type="date" class="followup-input" id="tp-followup-${p.id}" onclick="event.stopPropagation()">
+            <button class="btn btn-primary" onclick="addTouchpoint('${p.id}'); event.stopPropagation()">Log</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>`;
+}
+
+function routeShort(r){
+  switch(r){
+    case 'route1_edina': return 'R1·Edina';
+    case 'route2_mpls':  return 'R2·MPLS';
+    case 'route3_eagan': return 'R3·Eagan';
+    default: return r||'';
+  }
+}
+
+function escHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escAttr(s){
+  return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function switchTab(el){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  currentRoute=el.dataset.route;
+  renderProspects();
+}
+
+async function toggleCard(id){
+  const card=document.getElementById('card-'+id);
+  const isExpanded=card.classList.contains('expanded');
+  document.querySelectorAll('.prospect-card.expanded').forEach(c=>{
+    if(c.id!=='card-'+id) c.classList.remove('expanded');
+  });
+  if(isExpanded){
+    card.classList.remove('expanded');
+  } else {
+    card.classList.add('expanded');
+    await loadTouchpoints(id);
+  }
+}
+
+async function loadTouchpoints(prospectId){
+  const container=document.getElementById('tp-list-'+prospectId);
+  try{
+    const tps=await apiFetch('stericube_touchpoints?prospect_id=eq.'+prospectId+'&order=created_at.desc&limit=5');
+    if(!tps||tps.length===0){
+      container.innerHTML='<div class="no-touchpoints">No touchpoints logged yet.</div>';
+      return;
+    }
+    container.innerHTML=tps.map(tp=>`
+      <div class="touchpoint">
+        <div class="tp-header">
+          <span class="tp-type">${TYPE_ICONS[tp.type]||'📝'} ${tp.type}</span>
+          <span class="tp-date">${tp.created_at.slice(0,10)}</span>
+        </div>
+        <div class="tp-note">${escHtml(tp.note||'')}</div>
+        ${tp.next_followup_date?`<div class="tp-followup">→ Follow up: ${tp.next_followup_date.slice(0,10)}</div>`:''}
+      </div>
+    `).join('');
+  }catch(e){
+    container.innerHTML=`<div class="no-touchpoints">Error: ${e.message}</div>`;
+  }
+}
+
+async function advanceStage(id, newStage, btn){
+  btn.disabled=true;
+  btn.textContent='Saving…';
+  try{
+    await apiFetch('stericube_prospects?id=eq.'+id,{
+      method:'PATCH',
+      body:JSON.stringify({stage:newStage, updated_at:new Date().toISOString()})
+    });
+    const p=allProspects.find(x=>x.id===id);
+    if(p) p.stage=newStage;
+    // Update badge
+    const badge=document.getElementById('badge-'+id);
+    if(badge){badge.className='stage-badge '+newStage;badge.textContent=newStage.replace(/_/g,' ');}
+    // Update advance button
+    const next=NEXT_STAGE[newStage];
+    if(next){
+      btn.className='btn btn-sm btn-advance';
+      btn.textContent=next.label;
+      btn.onclick=function(e){advanceStage(id,next.stage,btn);e.stopPropagation();};
+      btn.disabled=false;
+    } else {
+      btn.className='btn btn-sm btn-advance confirmed';
+      btn.textContent='✓ Done';
+      btn.disabled=true;
+    }
+    // Update stage select in expanded panel if open
+    const sel=document.getElementById('stage-'+id);
+    if(sel) sel.value=newStage;
+    renderPipelineSummary();
+    showToast('Stage → '+newStage.replace(/_/g,' ')+' ✓','success');
+  }catch(e){
+    btn.disabled=false;
+    btn.textContent=NEXT_STAGE[allProspects.find(x=>x.id===id)?.stage||'researched']?.label||'Advance';
+    showToast('Failed: '+e.message,'error');
+  }
+}
+
+async function updateStage(id){
+  const select=document.getElementById('stage-'+id);
+  const newStage=select.value;
+  try{
+    await apiFetch('stericube_prospects?id=eq.'+id,{
+      method:'PATCH',
+      body:JSON.stringify({stage:newStage, updated_at:new Date().toISOString()})
+    });
+    const p=allProspects.find(x=>x.id===id);
+    if(p) p.stage=newStage;
+    const badge=document.getElementById('badge-'+id);
+    if(badge){badge.className='stage-badge '+newStage;badge.textContent=newStage.replace(/_/g,' ');}
+    // Sync advance button
+    const next=NEXT_STAGE[newStage];
+    const advBtn=document.getElementById('adv-'+id);
+    if(advBtn){
+      if(next){
+        advBtn.className='btn btn-sm btn-advance';
+        advBtn.textContent=next.label;
+        advBtn.onclick=function(e){advanceStage(id,next.stage,advBtn);e.stopPropagation();};
+        advBtn.disabled=false;
+      } else {
+        advBtn.className='btn btn-sm btn-advance confirmed';
+        advBtn.textContent='✓ Done';
+        advBtn.disabled=true;
+      }
+    }
+    renderPipelineSummary();
+    showToast('Stage updated ✓','success');
+  }catch(e){
+    showToast('Failed: '+e.message,'error');
+  }
+}
+
+async function saveContact(id){
+  const fields=['contact_name','contact_role','contact_phone','contact_email'];
+  const data={};
+  fields.forEach(f=>{
+    const el=document.getElementById('inp-'+f+'-'+id);
+    if(el) data[f]=el.value||null;
+  });
+  data.updated_at=new Date().toISOString();
+  try{
+    await apiFetch('stericube_prospects?id=eq.'+id,{
+      method:'PATCH',body:JSON.stringify(data)
+    });
+    const p=allProspects.find(x=>x.id===id);
+    if(p) Object.assign(p,data);
+    showToast('Contact saved ✓','success');
+  }catch(e){
+    showToast('Save failed: '+e.message,'error');
+  }
+}
+
+async function saveNotes(id){
+  const notes=document.getElementById('inp-notes-'+id).value||null;
+  try{
+    await apiFetch('stericube_prospects?id=eq.'+id,{
+      method:'PATCH',body:JSON.stringify({notes, updated_at:new Date().toISOString()})
+    });
+    const p=allProspects.find(x=>x.id===id);
+    if(p) p.notes=notes;
+    showToast('Notes saved ✓','success');
+  }catch(e){
+    showToast('Save failed: '+e.message,'error');
+  }
+}
+
+async function addTouchpoint(prospectId){
+  const noteEl=document.getElementById('tp-note-'+prospectId);
+  const typeEl=document.getElementById('tp-type-'+prospectId);
+  const followupEl=document.getElementById('tp-followup-'+prospectId);
+  const note=noteEl.value.trim();
+  if(!note){showToast('Add a note first','error');return;}
+
+  const payload={
+    prospect_id:prospectId,
+    type:typeEl.value,
+    note,
+    next_followup_date:followupEl.value||null
+  };
+  const today=todayStr();
+  const patch={last_contact_date:today, updated_at:new Date().toISOString()};
+  if(followupEl.value) patch.next_followup_date=followupEl.value;
+
+  try{
+    await apiFetch('stericube_touchpoints',{method:'POST',body:JSON.stringify(payload)});
+    await apiFetch('stericube_prospects?id=eq.'+prospectId,{method:'PATCH',body:JSON.stringify(patch)});
+    const p=allProspects.find(x=>x.id===prospectId);
+    if(p){
+      p.last_contact_date=today;
+      if(followupEl.value) p.next_followup_date=followupEl.value;
+    }
+    noteEl.value='';
+    followupEl.value='';
+    typeEl.value='note';
+    await loadTouchpoints(prospectId);
+    renderPipelineSummary();
+    renderDueBanner();
+    showToast('Touchpoint logged ✓','success');
+  }catch(e){
+    showToast('Failed: '+e.message,'error');
+  }
+}
+
+let toastTimer;
+function showToast(msg,type){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.className='show '+(type||'');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.className='',2800);
+}
+
+// Init
+loadProspects();
+</script>
+</body>
+</html>
