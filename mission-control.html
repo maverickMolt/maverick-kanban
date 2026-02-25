@@ -601,7 +601,7 @@
     const feed = document.getElementById('scout-feed');
     try {
       const msgs = await api(
-        'messages?or=(session_key.ilike.*scout*,channel.eq.scout)&order=created_at.desc&limit=10&select=id,session_key,channel,content,subject,created_at'
+        'messages?session_key=ilike.*scout*&order=created_at.desc&limit=10&select=id,session_key,channel,content,created_at'
       );
 
       if (!msgs.length) {
@@ -612,7 +612,7 @@
       feed.innerHTML = msgs.map((m, i) => {
         const raw = m.content || '';
         const lines = raw.split('\n').filter(l => l.trim());
-        const titleLine = m.subject || lines[0] || 'Scout Report';
+        const titleLine = lines[0] || 'Scout Report';
         // strip markdown headers
         const title = titleLine.replace(/^#+\s*/, '').replace(/\*\*/g, '').substring(0, 120);
         const previewText = raw.substring(0, 200).replace(/\n+/g, ' ');
