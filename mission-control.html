@@ -3,895 +3,511 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mission Control</title>
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <title>Mission Control v2</title>
   <style>
-    /* Auth overlay */
-    .auth-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: #0d1117;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-    }
-    .auth-overlay.hidden { display: none; }
-    .auth-box {
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 12px;
-      padding: 2rem;
-      width: 90%;
-      max-width: 360px;
-      text-align: center;
-    }
-    .auth-box h1 {
-      font-size: 1.5rem;
-      margin-bottom: 0.5rem;
-      color: #c9d1d9;
-    }
-    .auth-box p {
-      color: #8b949e;
-      font-size: 0.9rem;
-      margin-bottom: 1.5rem;
-    }
-    .auth-box input {
-      width: 100%;
-      padding: 0.75rem;
-      background: #0d1117;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      color: #c9d1d9;
-      font-size: 1rem;
-      margin-bottom: 1rem;
-      text-align: center;
-    }
-    .auth-box input:focus {
-      outline: none;
-      border-color: #58a6ff;
-    }
-    .auth-box button {
-      width: 100%;
-      padding: 0.75rem;
-      background: #238636;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 1rem;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    .auth-box button:hover { background: #2ea043; }
-    .auth-error {
-      color: #f85149;
-      font-size: 0.85rem;
-      margin-top: 0.5rem;
-      display: none;
-    }
-    .auth-error.show { display: block; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg-primary: #0d1117;
-      --bg-secondary: #161b22;
-      --bg-tertiary: #21262d;
-      --border: #30363d;
-      --text-primary: #c9d1d9;
-      --text-secondary: #8b949e;
-      --accent-blue: #58a6ff;
-      --accent-green: #3fb950;
-      --accent-yellow: #d29922;
-      --accent-red: #f85149;
-      --accent-purple: #a371f7;
+      --bg: #0f0f0f; --surface: #161616; --surface2: #1e1e1e;
+      --border: #2a2a2a; --border2: #333;
+      --text: #e8e8e8; --text-muted: #888; --text-dim: #555;
+      --orange: #ff9500; --orange-dim: rgba(255,149,0,0.12); --orange-glow: rgba(255,149,0,0.3);
+      --green: #30d158; --yellow: #ffd60a; --red: #ff453a;
+      --blue: #0a84ff; --purple: #bf5af2; --teal: #32d2c2;
+      --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+      --mono: 'SF Mono', 'Fira Code', monospace;
     }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
-    
-    /* Layout */
-    .app { display: grid; grid-template-columns: 280px 1fr 320px; grid-template-rows: auto 1fr; height: 100vh; }
-    .header { grid-column: 1 / -1; background: var(--bg-secondary); padding: 0.75rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-    .header h1 { font-size: 1.25rem; display: flex; align-items: center; gap: 0.5rem; }
-    .header-actions { display: flex; gap: 0.5rem; align-items: center; }
-    .sync-status { font-size: 0.75rem; padding: 0.25rem 0.5rem; border-radius: 4px; background: var(--bg-tertiary); }
-    .sync-status.connected { color: var(--accent-green); }
-    .sync-status.error { color: var(--accent-red); }
-    
-    /* Sidebar - Agents & Stats */
-    .sidebar { background: var(--bg-secondary); border-right: 1px solid var(--border); padding: 1rem; overflow-y: auto; }
-    .sidebar h2 { font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
-    .agent-card { background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; margin-bottom: 0.5rem; }
-    .agent-card:hover { border-color: var(--accent-blue); }
-    .agent-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
-    .agent-emoji { font-size: 1.25rem; }
-    .agent-name { font-weight: 600; }
-    .agent-role { font-size: 0.75rem; color: var(--text-secondary); }
-    .agent-status { display: inline-block; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.7rem; text-transform: uppercase; }
-    .agent-status.idle { background: var(--bg-primary); color: var(--text-secondary); }
-    .agent-status.active { background: var(--accent-green); color: #000; }
-    .agent-status.blocked { background: var(--accent-red); color: #fff; }
-    .agent-task { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
-    
-    /* Stats Section */
-    .stats-section { margin-top: 1.5rem; }
-    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; }
-    .stat-card { background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; text-align: center; }
-    .stat-card .number { font-size: 1.5rem; font-weight: bold; color: var(--accent-blue); }
-    .stat-card .label { font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.15rem; }
-    .stat-card.tasks .number { color: var(--accent-green); }
-    .stat-card.content .number { color: var(--accent-red); }
-    .stat-card.social .number { color: var(--accent-purple); }
-    
-    /* Main content - Tasks */
-    .main { overflow-y: auto; padding: 1rem; }
-    .main h2 { font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; }
-    .add-btn { background: var(--accent-green); color: #000; border: none; padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: 600; }
-    .add-btn:hover { opacity: 0.9; }
-    
-    /* Kanban columns */
-    .kanban { display: flex; gap: 1rem; overflow-x: auto; padding-bottom: 1rem; }
-    .column { background: var(--bg-secondary); border-radius: 8px; min-width: 260px; flex-shrink: 0; }
-    .column-header { padding: 0.75rem; font-weight: 600; font-size: 0.9rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
-    .column-header .count { background: var(--bg-tertiary); padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.75rem; }
-    .tasks-list { padding: 0.5rem; min-height: 100px; }
-    
-    .task-card { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.6rem; margin-bottom: 0.5rem; cursor: pointer; transition: border-color 0.15s; }
-    .task-card:hover { border-color: var(--accent-blue); }
-    .task-card.selected { border-color: var(--accent-blue); box-shadow: 0 0 0 1px var(--accent-blue); }
-    .task-card.dragging { opacity: 0.5; }
-    .task-title { font-weight: 500; font-size: 0.9rem; margin-bottom: 0.25rem; }
-    .task-meta { font-size: 0.7rem; color: var(--text-secondary); display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .task-meta .priority { padding: 0.1rem 0.3rem; border-radius: 3px; }
-    .priority-high { background: var(--accent-red); color: #fff; }
-    .priority-medium { background: var(--accent-yellow); color: #000; }
-    .priority-low { background: var(--accent-blue); color: #fff; }
-    .task-assignee { display: flex; align-items: center; gap: 0.25rem; }
-    .task-comments { color: var(--accent-blue); }
-    .tasks-list.drop-zone { background: var(--bg-tertiary); }
-    
-    /* Right panel - Activity & Detail */
-    .right-panel { background: var(--bg-secondary); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
-    .panel-tabs { display: flex; border-bottom: 1px solid var(--border); }
-    .panel-tab { flex: 1; padding: 0.75rem; text-align: center; font-size: 0.85rem; cursor: pointer; border-bottom: 2px solid transparent; }
-    .panel-tab:hover { background: var(--bg-tertiary); }
-    .panel-tab.active { border-bottom-color: var(--accent-blue); color: var(--accent-blue); }
-    .panel-content { flex: 1; overflow-y: auto; padding: 1rem; }
-    
-    /* Activity Filters */
-    .activity-filters { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-bottom: 0.75rem; }
-    .filter-btn { background: var(--bg-tertiary); color: var(--text-secondary); border: none; padding: 0.25rem 0.5rem; border-radius: 12px; cursor: pointer; font-size: 0.7rem; }
-    .filter-btn:hover { background: var(--border); color: var(--text-primary); }
-    .filter-btn.active { background: var(--accent-blue); color: #000; }
-    
-    /* Activity Feed */
-    .activity-item { display: flex; gap: 0.75rem; padding: 0.75rem 0; border-bottom: 1px solid var(--border); }
-    .activity-item:last-child { border-bottom: none; }
-    .activity-emoji { font-size: 1.25rem; flex-shrink: 0; }
-    .activity-body { flex: 1; min-width: 0; }
-    .activity-text { font-size: 0.85rem; line-height: 1.4; }
-    .activity-text strong { color: var(--text-primary); }
-    .activity-text a { color: var(--accent-blue); text-decoration: none; }
-    .activity-text a:hover { text-decoration: underline; }
-    .activity-time { font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem; }
-    .activity-desc { font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem; word-break: break-word; }
-    .activity-desc a { color: var(--accent-blue); text-decoration: none; }
-    .activity-desc a:hover { text-decoration: underline; }
-    
-    /* Task Detail */
-    .detail-header { margin-bottom: 1rem; }
-    .detail-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
-    .detail-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
-    .detail-badges span { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: var(--bg-tertiary); }
-    .status-select { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border); cursor: pointer; }
-    .status-select:hover { border-color: var(--accent-blue); }
-    .status-select:focus { outline: none; border-color: var(--accent-blue); }
-    .detail-description { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; margin-bottom: 1rem; font-size: 0.9rem; line-height: 1.5; }
-    .detail-description h2 { font-size: 1rem; margin: 0.75rem 0 0.5rem; }
-    .detail-description h2:first-child { margin-top: 0; }
-    .detail-description ul, .detail-description ol { margin-left: 1.25rem; }
-    
-    /* Comments */
-    .comments-section h3 { font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem; }
-    .comment { background: var(--bg-primary); border: 1px solid var(--border); border-radius: 6px; padding: 0.75rem; margin-bottom: 0.5rem; }
-    .comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
-    .comment-author { font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 0.35rem; }
-    .comment-time { font-size: 0.7rem; color: var(--text-secondary); }
-    .comment-body { font-size: 0.85rem; line-height: 1.4; }
-    
-    .comment-input { display: flex; gap: 0.5rem; margin-top: 1rem; }
-    .comment-input input { flex: 1; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; color: var(--text-primary); font-size: 0.85rem; }
-    .comment-input button { background: var(--accent-blue); color: #fff; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
-    
-    /* Modal */
-    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 100; }
-    .modal.active { display: flex; }
-    .modal-content { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; width: 90%; max-width: 500px; }
-    .modal-content h2 { margin-bottom: 1rem; }
-    .form-group { margin-bottom: 1rem; }
-    .form-group label { display: block; margin-bottom: 0.25rem; font-size: 0.85rem; color: var(--text-secondary); }
-    .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 0.5rem; background: var(--bg-primary); border: 1px solid var(--border); border-radius: 4px; color: var(--text-primary); font-size: 0.9rem; }
-    .form-group textarea { min-height: 150px; resize: vertical; font-family: inherit; }
-    .form-row { display: flex; gap: 1rem; }
-    .form-row .form-group { flex: 1; }
-    .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
-    .modal-actions button { padding: 0.5rem 1rem; border-radius: 4px; border: none; cursor: pointer; }
-    .btn-cancel { background: var(--bg-tertiary); color: var(--text-primary); }
-    .btn-save { background: var(--accent-green); color: #000; }
-    
-    /* Empty states */
-    .empty-state { text-align: center; padding: 2rem; color: var(--text-secondary); font-size: 0.85rem; }
-    
-    /* Mobile nav */
-    .mobile-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg-secondary); border-top: 1px solid var(--border); padding: 0.5rem; z-index: 50; }
-    .mobile-nav-items { display: flex; justify-content: space-around; }
-    .mobile-nav-btn { background: none; border: none; color: var(--text-secondary); padding: 0.5rem 1rem; border-radius: 8px; cursor: pointer; font-size: 0.75rem; display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
-    .mobile-nav-btn.active { color: var(--accent-blue); background: var(--bg-tertiary); }
-    .mobile-nav-btn span { font-size: 1.25rem; }
-    
-    @media (max-width: 1100px) {
-      .app { grid-template-columns: 220px 1fr 280px; }
-    }
+    body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; line-height: 1.5; }
+
+    /* HEADER */
+    .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.875rem 1.5rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+    .header-logo { font-size: 1.2rem; font-weight: 700; color: var(--orange); letter-spacing: -0.02em; }
+    .header-sub { color: var(--text-dim); font-size: 0.7rem; font-family: var(--mono); margin-left: 0.5rem; }
+    .header-right { display: flex; align-items: center; gap: 0.75rem; }
+    .refresh-btn { background: var(--surface2); border: 1px solid var(--border2); color: var(--text-muted); padding: 0.35rem 0.75rem; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-family: var(--font); transition: all 0.15s; }
+    .refresh-btn:hover { color: var(--text); border-color: var(--orange); }
+    .last-refresh { font-size: 0.68rem; color: var(--text-dim); font-family: var(--mono); }
+    .live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ACTION BAR */
+    .action-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.6rem 1.5rem; display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+    .action-label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-right: 0.25rem; }
+    .action-btn { background: var(--surface2); border: 1px solid var(--border2); color: var(--text-muted); padding: 0.33rem 0.875rem; border-radius: 6px; cursor: pointer; font-size: 0.78rem; font-family: var(--font); text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem; transition: all 0.15s; }
+    .action-btn:hover { color: var(--text); border-color: var(--orange); background: var(--orange-dim); }
+
+    /* SCOUT MODAL */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; padding: 1.5rem; max-width: 480px; width: 90%; }
+    .modal-title { font-weight: 700; font-size: 1rem; margin-bottom: 0.75rem; color: var(--orange); }
+    .modal-body { color: var(--text-muted); font-size: 0.875rem; line-height: 1.6; margin-bottom: 1rem; }
+    .modal-code { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 0.875rem; font-family: var(--mono); font-size: 0.78rem; color: var(--green); overflow-x: auto; margin-bottom: 0.75rem; }
+    .modal-note { color: var(--text-dim); font-size: 0.73rem; line-height: 1.5; margin-bottom: 1rem; }
+    .modal-close { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-family: var(--font); }
+
+    /* PAGE */
+    .page { max-width: 1400px; margin: 0 auto; padding: 1.25rem 1.5rem 3rem; display: flex; flex-direction: column; gap: 1.25rem; }
+
+    /* SECTION TITLE */
+    .section-title { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
+    .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* AGENT BAR */
+    .agent-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .agent-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; display: flex; align-items: center; gap: 0.875rem; }
+    .agent-orb { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+    .orb-green  { background: var(--green);  box-shadow: 0 0 8px var(--green); }
+    .orb-yellow { background: var(--yellow); box-shadow: 0 0 8px var(--yellow); }
+    .orb-red    { background: var(--red);    box-shadow: 0 0 8px var(--red); }
+    .agent-emoji-big { font-size: 2rem; flex-shrink: 0; line-height: 1; }
+    .agent-info { flex: 1; min-width: 0; }
+    .agent-name-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.2rem; }
+    .agent-name { font-weight: 700; font-size: 0.95rem; }
+    .agent-badge { font-size: 0.62rem; font-weight: 600; padding: 0.12rem 0.4rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .badge-active  { background: rgba(48,209,88,.15); color: var(--green); }
+    .badge-idle    { background: rgba(255,214,10,.15); color: var(--yellow); }
+    .badge-offline { background: rgba(255,69,58,.15);  color: var(--red); }
+    .agent-action  { font-size: 0.77rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .agent-time { font-size: 0.68rem; color: var(--text-dim); font-family: var(--mono); flex-shrink: 0; text-align: right; }
+
+    /* ACTION INBOX */
+    .inbox-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .inbox-title { font-size: 0.68rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; }
+    .inbox-count { background: var(--orange); color: #000; font-size: 0.62rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 10px; min-width: 18px; text-align: center; }
+    .inbox-count.zero { background: var(--surface2); color: var(--text-dim); }
+    .inbox-spacer { flex: 1; height: 1px; background: var(--border); }
+    .inbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 0.75rem; }
+    .inbox-item { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--orange); border-radius: 8px; padding: 0.875rem 1rem; transition: background 0.15s, border-color 0.15s; }
+    .inbox-item:hover { background: var(--surface2); border-color: var(--orange); }
+    .inbox-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.375rem; }
+    .inbox-title-text { font-weight: 600; font-size: 0.875rem; line-height: 1.3; }
+    .p-badge { font-size: 0.58rem; font-weight: 700; padding: 0.12rem 0.38rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; flex-shrink: 0; }
+    .p-high   { background: rgba(255,69,58,.2);  color: var(--red); }
+    .p-medium { background: rgba(255,149,0,.18); color: var(--orange); }
+    .p-low    { background: rgba(10,132,255,.15); color: var(--blue); }
+    .inbox-meta { font-size: 0.7rem; color: var(--text-dim); display: flex; gap: 0.5rem; align-items: center; }
+    .s-pill { font-size: 0.58rem; font-weight: 600; padding: 0.1rem 0.32rem; border-radius: 3px; background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); text-transform: uppercase; }
+    .inbox-clear { background: var(--surface); border: 1px dashed var(--border); border-radius: 8px; padding: 1.25rem; text-align: center; color: var(--green); font-size: 0.85rem; font-weight: 500; }
+
+    /* MIDDLE ROW */
+    .middle-row { display: grid; grid-template-columns: 320px 1fr; gap: 1.25rem; align-items: start; }
+
+    /* KANBAN SUMMARY */
+    .kanban-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .card-header { padding: 0.875rem 1rem; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+    .card-title { font-weight: 700; font-size: 0.875rem; }
+    .card-link { font-size: 0.72rem; color: var(--orange); text-decoration: none; opacity: .8; }
+    .card-link:hover { opacity: 1; }
+    .k-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); }
+    .k-stat { background: var(--surface); padding: 0.875rem; text-align: center; }
+    .k-stat:hover { background: var(--surface2); }
+    .k-num { font-size: 1.7rem; font-weight: 800; line-height: 1; margin-bottom: 0.2rem; }
+    .k-label { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; }
+    .num-b { color: var(--text-muted); }
+    .num-t { color: var(--blue); }
+    .num-p { color: var(--orange); }
+    .num-d { color: var(--green); }
+    .card-footer { padding: 0.75rem 1rem; border-top: 1px solid var(--border); }
+    .k-btn { display: block; text-align: center; background: var(--orange-dim); border: 1px solid var(--orange); color: var(--orange); text-decoration: none; padding: 0.5rem; border-radius: 6px; font-size: 0.8rem; font-weight: 600; transition: all 0.15s; }
+    .k-btn:hover { background: var(--orange); color: #000; }
+
+    /* ACTIVITY FEED */
+    .feed-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .feed-list { max-height: 420px; overflow-y: auto; }
+    .feed-item { display: grid; grid-template-columns: auto 1fr auto; gap: 0.75rem; padding: 0.7rem 1rem; border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    .feed-item:last-child { border-bottom: none; }
+    .feed-item:hover { background: var(--surface2); }
+    .feed-ch { font-size: 0.6rem; font-weight: 600; padding: 0.12rem 0.38rem; border-radius: 4px; background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; align-self: start; }
+    .feed-body { min-width: 0; }
+    .feed-sess { font-size: 0.62rem; color: var(--text-dim); font-family: var(--mono); margin-bottom: 0.15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .feed-content { font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .feed-time { font-size: 0.62rem; color: var(--text-dim); font-family: var(--mono); white-space: nowrap; align-self: start; }
+
+    /* ACTIVITY LOG */
+    .log-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .log-count { font-size: 0.68rem; color: var(--text-dim); font-family: var(--mono); }
+    .log-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .log-table th { padding: 0.5rem 1rem; text-align: left; font-size: 0.62rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); background: var(--surface); border-bottom: 1px solid var(--border); }
+    .log-table td { padding: 0.6rem 1rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .log-table tr:last-child td { border-bottom: none; }
+    .log-table tr:hover td { background: var(--surface2); }
+    .log-action { font-weight: 600; color: var(--text); margin-bottom: 0.1rem; }
+    .log-desc { color: var(--text-muted); font-size: 0.73rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .log-source { color: var(--text-dim); font-size: 0.7rem; font-family: var(--mono); }
+    .log-time { color: var(--text-dim); font-size: 0.65rem; font-family: var(--mono); white-space: nowrap; }
+    .cat { font-size: 0.58rem; font-weight: 700; padding: 0.12rem 0.42rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; display: inline-block; }
+    .cat-infrastructure { background: rgba(10,132,255,.15);  color: var(--blue); }
+    .cat-content        { background: rgba(48,209,88,.15);   color: var(--green); }
+    .cat-cost           { background: rgba(255,149,0,.15);   color: var(--orange); }
+    .cat-incident       { background: rgba(255,69,58,.15);   color: var(--red); }
+    .cat-engagement     { background: rgba(191,90,242,.15);  color: var(--purple); }
+    .cat-research       { background: rgba(50,210,194,.15);  color: var(--teal); }
+    .cat-task           { background: rgba(255,214,10,.15);  color: var(--yellow); }
+    .cat-other          { background: var(--surface2);        color: var(--text-muted); }
+
+    /* UTIL */
+    .loading { padding: 1.5rem; text-align: center; color: var(--text-dim); font-size: 0.78rem; }
+    .loading::after { content: ''; display: inline-block; width: 10px; height: 10px; border: 2px solid var(--border); border-top-color: var(--orange); border-radius: 50%; animation: spin 0.8s linear infinite; margin-left: 0.5rem; vertical-align: middle; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
     @media (max-width: 900px) {
-      .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; height: calc(100vh - 60px); }
-      .header { padding: 0.5rem 1rem; }
-      .header h1 { font-size: 1rem; }
-      .sidebar { display: none; border: none; }
-      .sidebar.mobile-active { display: block; position: fixed; top: 50px; left: 0; right: 0; bottom: 60px; z-index: 40; overflow-y: auto; }
-      .right-panel { display: none; border: none; }
-      .right-panel.mobile-active { display: flex; position: fixed; top: 50px; left: 0; right: 0; bottom: 60px; z-index: 40; }
-      .main { padding: 0.75rem; }
-      .main.mobile-hidden { display: none; }
-      .kanban { gap: 0.75rem; }
-      .column { min-width: 220px; }
-      .mobile-nav { display: block; }
-      .modal-content { padding: 1rem; }
-      .form-row { flex-direction: column; gap: 0; }
+      .agent-bar, .middle-row { grid-template-columns: 1fr; }
+      .page { padding: 1rem; }
     }
-    @media (max-width: 480px) {
-      .column { min-width: 85vw; }
-      .task-card { padding: 0.5rem; }
-      .stats-grid { grid-template-columns: 1fr 1fr; }
-      .stat-card .number { font-size: 1.25rem; }
-      .activity-filters { gap: 0.25rem; }
-      .filter-btn { padding: 0.2rem 0.4rem; font-size: 0.65rem; }
+    @media (max-width: 640px) {
+      .header-sub { display: none; }
+      .log-table th:nth-child(4), .log-table td:nth-child(4) { display: none; }
     }
   </style>
 </head>
 <body>
-  <!-- Auth Overlay -->
-  <div class="auth-overlay" id="auth-overlay">
-    <div class="auth-box">
-      <h1>🎯 Mission Control</h1>
-      <p>Sign in to continue</p>
-      <input type="email" id="auth-email" placeholder="Email" onkeypress="if(event.key==='Enter')document.getElementById('auth-password').focus()">
-      <input type="password" id="auth-password" placeholder="Password" onkeypress="if(event.key==='Enter')signIn()">
-      <button onclick="signIn()">Sign In</button>
-      <div class="auth-error" id="auth-error">Invalid credentials</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div style="display:flex;align-items:center;">
+    <span class="header-logo">🎯 Mission Control</span>
+    <span class="header-sub">v2</span>
+  </div>
+  <div class="header-right">
+    <span class="last-refresh" id="last-refresh">loading…</span>
+    <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
+    <span class="live-dot" title="Auto-refreshes every 60s"></span>
+  </div>
+</header>
+
+<!-- QUICK ACTIONS -->
+<div class="action-bar">
+  <span class="action-label">Actions</span>
+  <button class="action-btn" onclick="document.getElementById('scout-modal').classList.add('open')">▶ Run Scout</button>
+  <a class="action-btn" href="https://twitter.com/MaverickMoltBot" target="_blank" rel="noopener">🐦 Check Twitter</a>
+  <a class="action-btn" href="#inbox-section">⚡ Action Inbox</a>
+  <a class="action-btn" href="#kanban-section">📋 View Tasks</a>
+  <a class="action-btn" href="index.html">📌 Full Kanban</a>
+  <a class="action-btn" href="cost-dashboard.html">💰 Cost</a>
+</div>
+
+<!-- SCOUT MODAL -->
+<div class="modal-overlay" id="scout-modal">
+  <div class="modal-box">
+    <div class="modal-title">▶ Run Scout</div>
+    <div class="modal-body">To trigger Scout manually, run this in your terminal:</div>
+    <pre class="modal-code">openclaw run --agent scout --task "Run scout analysis"</pre>
+    <div class="modal-note">Or wait for Scout's next scheduled run. Check HEARTBEAT.md for the cron schedule.</div>
+    <button class="modal-close" onclick="document.getElementById('scout-modal').classList.remove('open')">Close</button>
+  </div>
+</div>
+
+<main class="page">
+
+  <!-- AGENT STATUS BAR -->
+  <section>
+    <div class="section-title">Agent Status</div>
+    <div class="agent-bar" id="agent-bar">
+      <div class="loading">Loading agents</div>
     </div>
+  </section>
+
+  <!-- ACTION INBOX -->
+  <section id="inbox-section">
+    <div class="inbox-header">
+      <span class="inbox-title">⚡ Action Inbox</span>
+      <span class="inbox-count zero" id="inbox-count">0</span>
+      <span class="inbox-spacer"></span>
+    </div>
+    <div id="inbox-grid" class="inbox-grid">
+      <div class="loading">Loading tasks</div>
+    </div>
+  </section>
+
+  <!-- KANBAN SUMMARY + ACTIVITY FEED -->
+  <div class="middle-row" id="kanban-section">
+
+    <!-- Kanban Summary -->
+    <div class="kanban-card">
+      <div class="card-header">
+        <span class="card-title">📋 Kanban Summary</span>
+        <a href="index.html" class="card-link">Open board →</a>
+      </div>
+      <div class="k-grid" id="k-grid">
+        <div class="loading" style="grid-column:1/-1">Loading</div>
+      </div>
+      <div class="card-footer">
+        <a href="index.html" class="k-btn">View Full Board</a>
+      </div>
+    </div>
+
+    <!-- Activity Feed (messages) -->
+    <div class="feed-card">
+      <div class="card-header">
+        <span class="card-title">💬 Activity Feed</span>
+        <span style="font-size:.7rem;color:var(--text-dim)">system messages · latest 20</span>
+      </div>
+      <div class="feed-list" id="feed-list">
+        <div class="loading">Loading messages</div>
+      </div>
+    </div>
+
   </div>
 
-  <div class="app" id="main-app" style="display:none;">
-    <header class="header">
-      <h1>🎯 Mission Control</h1>
-      <div class="header-actions">
-        <span class="sync-status connected" id="sync-status">● Connected</span>
-        <button onclick="logout()" style="background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-secondary); padding: 0.25rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">Logout</button>
-      </div>
-    </header>
-    
-    <!-- Sidebar: Agents & Stats -->
-    <aside class="sidebar">
-      <h2>Squad</h2>
-      <div id="agents-list"></div>
-      
-      <div class="stats-section">
-        <h2>Stats</h2>
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="number" id="stat-total">-</div>
-            <div class="label">Total Actions</div>
-          </div>
-          <div class="stat-card tasks">
-            <div class="number" id="stat-tasks">-</div>
-            <div class="label">Tasks</div>
-          </div>
-          <div class="stat-card content">
-            <div class="number" id="stat-content">-</div>
-            <div class="label">Content</div>
-          </div>
-          <div class="stat-card social">
-            <div class="number" id="stat-social">-</div>
-            <div class="label">Social</div>
-          </div>
-        </div>
-      </div>
-    </aside>
-    
-    <!-- Main: Kanban -->
-    <main class="main">
-      <h2>Tasks <button class="add-btn" onclick="openModal()">+ New Task</button></h2>
-      <div class="kanban" id="kanban">
-        <div class="column" data-status="backlog">
-          <div class="column-header">📋 Inbox <span class="count" id="count-backlog">0</span></div>
-          <div class="tasks-list" id="tasks-backlog"></div>
-        </div>
-        <div class="column" data-status="todo">
-          <div class="column-header">📝 Assigned <span class="count" id="count-todo">0</span></div>
-          <div class="tasks-list" id="tasks-todo"></div>
-        </div>
-        <div class="column" data-status="in-progress">
-          <div class="column-header">🔨 In Progress <span class="count" id="count-in-progress">0</span></div>
-          <div class="tasks-list" id="tasks-in-progress"></div>
-        </div>
-        <div class="column" data-status="review">
-          <div class="column-header">👀 Review <span class="count" id="count-review">0</span></div>
-          <div class="tasks-list" id="tasks-review"></div>
-        </div>
-        <div class="column" data-status="done">
-          <div class="column-header">✅ Done <span class="count" id="count-done">0</span></div>
-          <div class="tasks-list" id="tasks-done"></div>
-        </div>
-      </div>
-    </main>
-    
-    <!-- Right Panel: Activity & Detail -->
-    <aside class="right-panel">
-      <div class="panel-tabs">
-        <div class="panel-tab active" onclick="showPanel('activity')">Activity</div>
-        <div class="panel-tab" onclick="showPanel('detail')">Detail</div>
-      </div>
-      <div class="panel-content" id="panel-content">
-        <div id="activity-panel">
-          <div class="activity-filters">
-            <button class="filter-btn active" data-filter="all" onclick="setActivityFilter('all')">All</button>
-            <button class="filter-btn" data-filter="task" onclick="setActivityFilter('task')">📋 Tasks</button>
-            <button class="filter-btn" data-filter="content" onclick="setActivityFilter('content')">📝 Content</button>
-            <button class="filter-btn" data-filter="social" onclick="setActivityFilter('social')">💬 Social</button>
-            <button class="filter-btn" data-filter="build" onclick="setActivityFilter('build')">🔨 Build</button>
-            <button class="filter-btn" data-filter="documentation" onclick="setActivityFilter('documentation')">📄 Docs</button>
-          </div>
-          <div id="activity-feed"></div>
-        </div>
-        <div id="detail-panel" style="display:none;">
-          <div class="empty-state">Select a task to view details</div>
-        </div>
-      </div>
-    </aside>
-  </div>
-  
-  <!-- Mobile Navigation -->
-  <nav class="mobile-nav" id="mobile-nav">
-    <div class="mobile-nav-items">
-      <button class="mobile-nav-btn active" onclick="showMobileView('tasks')">
-        <span>📋</span>
-        Tasks
-      </button>
-      <button class="mobile-nav-btn" onclick="showMobileView('squad')">
-        <span>🦅</span>
-        Squad
-      </button>
-      <button class="mobile-nav-btn" onclick="showMobileView('activity')">
-        <span>📊</span>
-        Activity
-      </button>
+  <!-- FULL ACTIVITY LOG -->
+  <section class="log-card">
+    <div class="card-header">
+      <span class="card-title">📊 Activity Log</span>
+      <span class="log-count" id="log-count">loading…</span>
     </div>
-  </nav>
-  
-  <!-- Add Task Modal -->
-  <div class="modal" id="modal">
-    <div class="modal-content">
-      <h2>New Task</h2>
-      <div class="form-group">
-        <label>Title</label>
-        <input type="text" id="task-title" placeholder="What needs to be done?">
-      </div>
-      <div class="form-group">
-        <label>Description</label>
-        <textarea id="task-desc" placeholder="Add details, context, or requirements..."></textarea>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>Assignee</label>
-          <select id="task-assignee">
-            <option value="maverick">🦅 Maverick</option>
-            <option value="scout">🔍 Scout</option>
-            <option value="matt">👤 Matt</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Priority</label>
-          <select id="task-priority">
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-            <option value="low">Low</option>
-          </select>
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-        <button class="btn-save" onclick="saveTask()">Create Task</button>
-      </div>
+    <div style="overflow-x:auto;">
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>Category</th>
+            <th>Action / Description</th>
+            <th>Source</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody id="log-body">
+          <tr><td colspan="4"><div class="loading">Loading activity</div></td></tr>
+        </tbody>
+      </table>
     </div>
-  </div>
+  </section>
 
-  <script type="module">
-    // Supabase Auth
-    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
-    
-    const SUPABASE_URL = 'https://npnqnsjmcyzkpoqynadr.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbnFuc2ptY3l6a3BvcXluYWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MjcxMDcsImV4cCI6MjA4NTMwMzEwN30.unckvGv1xozWSGGt5adOFKgffzZtyGNn5j_tsCm72WU';
-    
-    const supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY);
-    let currentUser = null;
-    
-    async function signIn() {
-      const email = document.getElementById('auth-email').value;
-      const password = document.getElementById('auth-password').value;
-      const errorEl = document.getElementById('auth-error');
-      
-      if (!email || !password) {
-        errorEl.textContent = 'Please enter email and password';
-        errorEl.classList.add('show');
-        return;
-      }
-      
-      try {
-        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-        
-        if (error) {
-          errorEl.textContent = error.message;
-          errorEl.classList.add('show');
-          document.getElementById('auth-password').value = '';
-          return;
-        }
-        
-        currentUser = data.user;
-        document.getElementById('auth-overlay').classList.add('hidden');
-        document.getElementById('main-app').style.display = 'grid';
-        init();
-      } catch (e) {
-        errorEl.textContent = 'Connection error: ' + e.message;
-        errorEl.classList.add('show');
-        console.error('Sign in error:', e);
-      }
-    }
-    
-    async function checkSession() {
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      if (session) {
-        currentUser = session.user;
-        document.getElementById('auth-overlay').classList.add('hidden');
-        document.getElementById('main-app').style.display = 'grid';
-        init();
-      }
-    }
-    
-    async function logout() {
-      await supabaseClient.auth.signOut();
-      location.reload();
-    }
-    
-    // Make functions available globally for onclick handlers
-    window.signIn = signIn;
-    window.logout = logout;
-    
-    // Check session on load
-    checkSession();
-    
-    let tasks = [];
-    let agents = [];
-    let activities = [];
-    let messages = [];
-    let selectedTaskId = null;
-    let activityFilter = 'all';
-    
-    async function api(method, endpoint, body = null) {
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      const token = session?.access_token || SUPABASE_KEY;
-      
-      const opts = {
-        method,
-        headers: {
-          'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation'
-        }
-      };
-      if (body) opts.body = JSON.stringify(body);
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, opts);
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const text = await res.text();
-      return text ? JSON.parse(text) : null;
-    }
-    
-    async function loadAgents() {
-      agents = await api('GET', 'agents?select=*&order=created_at.asc');
-      renderAgents();
-    }
-    
-    async function loadTasks() {
-      tasks = await api('GET', 'kanban_tasks?select=*&order=created_at.asc');
-      renderKanban();
-    }
-    
-    async function loadActivities() {
-      activities = await api('GET', 'activity_log?select=*&order=created_at.desc&limit=100');
-      updateStats();
-      renderActivityFeed();
-    }
-    
-    async function loadMessages(taskId) {
-      if (!taskId) return [];
-      return await api('GET', `messages?task_id=eq.${taskId}&select=*,agents(name,emoji)&order=created_at.asc`);
-    }
-    
-    function updateStats() {
-      document.getElementById('stat-total').textContent = activities.length;
-      document.getElementById('stat-tasks').textContent = activities.filter(a => a.category === 'task').length;
-      document.getElementById('stat-content').textContent = activities.filter(a => a.category === 'content').length;
-      document.getElementById('stat-social').textContent = activities.filter(a => a.category === 'social').length;
-    }
-    
-    function renderAgents() {
-      const container = document.getElementById('agents-list');
-      container.innerHTML = agents.map(a => `
-        <div class="agent-card">
-          <div class="agent-header">
-            <span class="agent-emoji">${a.emoji}</span>
-            <div>
-              <div class="agent-name">${a.name}</div>
-              <div class="agent-role">${a.role}</div>
-            </div>
-          </div>
-          <span class="agent-status ${a.status}">${a.status}</span>
-        </div>
-      `).join('');
-    }
-    
-    function renderKanban() {
-      const statuses = ['backlog', 'todo', 'in-progress', 'review', 'done'];
-      statuses.forEach(status => {
-        const container = document.getElementById(`tasks-${status}`);
-        const statusTasks = tasks.filter(t => t.status === status);
-        document.getElementById(`count-${status}`).textContent = statusTasks.length;
-        
-        container.innerHTML = statusTasks.map(t => `
-          <div class="task-card ${selectedTaskId === t.id ? 'selected' : ''}" onclick="selectTask('${t.id}')" draggable="true" data-id="${t.id}">
-            <div class="task-title">${escapeHtml(t.title)}</div>
-            <div class="task-meta">
-              <span class="priority priority-${t.priority}">${t.priority}</span>
-              <span class="task-assignee">${getAssigneeEmoji(t.assignee)} ${t.assignee}</span>
-            </div>
-          </div>
-        `).join('') || '<div class="empty-state">No tasks</div>';
-      });
-      
-      setTimeout(setupDragDrop, 0);
-    }
-    
-    function getAssigneeEmoji(assignee) {
-      if (assignee === 'maverick') return '🦅';
-      if (assignee === 'scout') return '🔍';
-      return '👤';
-    }
-    
-    const activityIcons = {
-      system: '⚙️',
-      task: '📋',
-      build: '🔨',
-      cron: '⏰',
-      social: '💬',
-      content: '📝',
-      documentation: '📄',
-      general: '📌'
-    };
-    
-    function setActivityFilter(filter) {
-      activityFilter = filter;
-      document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.filter === filter);
-      });
-      renderActivityFeed();
-    }
-    
-    function linkifyText(text) {
-      if (!text) return '';
-      let escaped = escapeHtml(text);
-      const urlRegex = /(https?:\/\/[^\s|]+)/g;
-      escaped = escaped.replace(urlRegex, '<a href="$1" target="_blank" rel="noopener">View →</a>');
-      escaped = escaped.replace(' | <a ', ' <a ');
-      return escaped;
-    }
-    
-    function renderActivityFeed() {
-      const container = document.getElementById('activity-feed');
-      const filtered = activityFilter === 'all' 
-        ? activities 
-        : activities.filter(a => a.category === activityFilter);
-      
-      if (!filtered.length) {
-        container.innerHTML = '<div class="empty-state">No activity yet</div>';
-        return;
-      }
-      
-      container.innerHTML = filtered.map(a => `
-        <div class="activity-item">
-          <span class="activity-emoji">${activityIcons[a.category] || '📌'}</span>
-          <div class="activity-body">
-            <div class="activity-text"><strong>${escapeHtml(a.source || 'System')}</strong> ${escapeHtml(a.action)}</div>
-            ${a.description ? `<div class="activity-desc">${linkifyText(a.description)}</div>` : ''}
-            <div class="activity-time">${timeAgo(a.created_at)}</div>
-          </div>
-        </div>
-      `).join('');
-    }
-    
-    async function selectTask(id) {
-      selectedTaskId = id;
-      renderKanban();
-      showPanel('detail');
-      await renderTaskDetail(id);
-    }
-    
-    async function renderTaskDetail(id) {
-      const task = tasks.find(t => t.id === id);
-      if (!task) return;
-      
-      const msgs = await loadMessages(id);
-      const detailPanel = document.getElementById('detail-panel');
-      
-      detailPanel.innerHTML = `
-        <div class="detail-header">
-          <div class="detail-title">${escapeHtml(task.title)}</div>
-          <div class="detail-badges">
-            <span class="priority-${task.priority}">${task.priority}</span>
-            <span>${getAssigneeEmoji(task.assignee)} ${task.assignee}</span>
-            <select class="status-select" onchange="changeTaskStatus('${task.id}', this.value)">
-              <option value="backlog" ${task.status === 'backlog' ? 'selected' : ''}>📋 Inbox</option>
-              <option value="todo" ${task.status === 'todo' ? 'selected' : ''}>📝 Assigned</option>
-              <option value="in-progress" ${task.status === 'in-progress' ? 'selected' : ''}>🔨 In Progress</option>
-              <option value="review" ${task.status === 'review' ? 'selected' : ''}>👀 Review</option>
-              <option value="done" ${task.status === 'done' ? 'selected' : ''}>✅ Done</option>
-            </select>
-          </div>
-        </div>
-        <div class="detail-description">
-          ${task.description ? marked.parse(task.description) : '<em>No description</em>'}
-        </div>
-        <div class="comments-section">
-          <h3>Comments (${msgs.length})</h3>
-          <div id="comments-list">
-            ${msgs.map(m => `
-              <div class="comment">
-                <div class="comment-header">
-                  <span class="comment-author">${m.agents?.emoji || '👤'} ${m.agents?.name || m.from_user || 'Unknown'}</span>
-                  <span class="comment-time">${timeAgo(m.created_at)}</span>
-                </div>
-                <div class="comment-body">${highlightMentions(m.content)}</div>
+</main>
+
+<script>
+  const SUPABASE_URL = 'https://npnqnsjmcyzkpoqynadr.supabase.co';
+  const KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbnFuc2ptY3l6a3BvcXluYWRyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2OTcyNzEwNywiZXhwIjoyMDg1MzAzMTA3fQ.RNnZZc75S8pLCBK1WBk4orHa19dGbSBUlclPqWbo22E';
+
+  const AGENTS = [
+    { id: '32b01c76-bd5d-4885-a35e-c9a13e05dc0f', name: 'Maverick', emoji: '🦅', sessionKey: 'agent:main:main' },
+    { id: '8f6ffdb1-6afe-4f8d-965c-4cdcdc6db85d', name: 'Scout',    emoji: '🔍', sessionKey: 'agent:scout' }
+  ];
+
+  async function api(endpoint) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${endpoint}`, {
+      headers: { 'apikey': KEY, 'Authorization': `Bearer ${KEY}` }
+    });
+    if (!res.ok) throw new Error(`API ${res.status}: ${endpoint}`);
+    return res.json();
+  }
+
+  function timeAgo(dateStr) {
+    if (!dateStr) return 'never';
+    const secs = Math.floor((Date.now() - new Date(dateStr)) / 1000);
+    if (secs < 60) return 'just now';
+    if (secs < 3600) return `${Math.floor(secs/60)}m ago`;
+    if (secs < 86400) return `${Math.floor(secs/3600)}h ago`;
+    return `${Math.floor(secs/86400)}d ago`;
+  }
+
+  function shortDate(dateStr) {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function statusOrb(minutesAgo) {
+    if (minutesAgo < 30)    return 'orb-green';
+    if (minutesAgo < 240)   return 'orb-yellow';
+    return 'orb-red';
+  }
+
+  function statusBadge(minutesAgo) {
+    if (minutesAgo < 30)  return { cls: 'badge-active',  txt: 'Active' };
+    if (minutesAgo < 240) return { cls: 'badge-idle',    txt: 'Idle' };
+    return                       { cls: 'badge-offline', txt: 'Offline' };
+  }
+
+  function catClass(cat) {
+    const known = ['infrastructure','content','cost','incident','engagement','research','task'];
+    return known.includes(cat) ? `cat-${cat}` : 'cat-other';
+  }
+
+  function priorityClass(p) {
+    if (p === 'high') return 'p-high';
+    if (p === 'low')  return 'p-low';
+    return 'p-medium';
+  }
+
+  /* ─── AGENT STATUS BAR ─── */
+  async function loadAgents() {
+    const bar = document.getElementById('agent-bar');
+    try {
+      // Fetch last message per agent by session_key pattern
+      const results = await Promise.all(AGENTS.map(async (agent) => {
+        // Try session_key match for maverick (main session) and scout
+        const data = await api(
+          `messages?session_key=like.*${encodeURIComponent(agent.sessionKey.split(':').pop())}*&order=created_at.desc&limit=1&select=content,created_at,channel`
+        );
+        return { agent, msg: data[0] || null };
+      }));
+
+      bar.innerHTML = results.map(({ agent, msg }) => {
+        const minutesAgo = msg
+          ? Math.floor((Date.now() - new Date(msg.created_at)) / 60000)
+          : 99999;
+        const orb = statusOrb(minutesAgo);
+        const badge = statusBadge(minutesAgo);
+        const preview = msg ? msg.content.replace(/\n/g,' ').substring(0, 80) : 'No recent activity';
+        const timeStr = msg ? timeAgo(msg.created_at) : 'never';
+
+        return `
+          <div class="agent-card">
+            <div class="agent-orb ${orb}"></div>
+            <div class="agent-emoji-big">${agent.emoji}</div>
+            <div class="agent-info">
+              <div class="agent-name-row">
+                <span class="agent-name">${agent.name}</span>
+                <span class="agent-badge ${badge.cls}">${badge.txt}</span>
               </div>
-            `).join('') || '<div class="empty-state">No comments yet</div>'}
+              <div class="agent-action">${esc(preview)}</div>
+            </div>
+            <div class="agent-time">${esc(timeStr)}</div>
+          </div>`;
+      }).join('');
+    } catch (e) {
+      bar.innerHTML = `<div style="color:var(--red);font-size:.8rem;padding:.5rem">Error loading agents: ${esc(e.message)}</div>`;
+    }
+  }
+
+
+  /* ─── ACTION INBOX ─── */
+  async function loadInbox() {
+    const grid = document.getElementById('inbox-grid');
+    const countEl = document.getElementById('inbox-count');
+    try {
+      const tasks = await api('kanban_tasks?assignee=eq.maverick&status=in.(backlog,todo)&order=created_at.desc&limit=20');
+      countEl.textContent = tasks.length;
+      countEl.className = tasks.length > 0 ? 'inbox-count' : 'inbox-count zero';
+
+      if (!tasks.length) {
+        grid.innerHTML = '<div class="inbox-clear">✓ All clear — no pending tasks for Maverick</div>';
+        return;
+      }
+      grid.innerHTML = tasks.map(t => `
+        <div class="inbox-item">
+          <div class="inbox-top">
+            <span class="inbox-title-text">${esc(t.title)}</span>
+            <span class="p-badge ${priorityClass(t.priority)}">${esc(t.priority || 'med')}</span>
           </div>
-          <div class="comment-input">
-            <input type="text" id="comment-text" placeholder="Add a comment... (use @agent to mention)">
-            <button onclick="postComment('${id}')">Send</button>
+          <div class="inbox-meta">
+            <span class="s-pill">${esc(t.status)}</span>
+            <span>${shortDate(t.created_at)}</span>
           </div>
+        </div>`).join('');
+    } catch (e) {
+      grid.innerHTML = `<div style="color:var(--red);font-size:.8rem">Error: ${esc(e.message)}</div>`;
+    }
+  }
+
+  /* ─── KANBAN SUMMARY ─── */
+  async function loadKanbanSummary() {
+    const kgrid = document.getElementById('k-grid');
+    try {
+      const tasks = await api('kanban_tasks?select=status');
+      const counts = { backlog:0, todo:0, 'in-progress':0, done:0 };
+      tasks.forEach(t => {
+        const s = t.status;
+        if (s in counts) counts[s]++;
+        else if (s === 'completed') counts.done++;
+      });
+      const total = tasks.length;
+      kgrid.innerHTML = `
+        <div class="k-stat">
+          <div class="k-num num-b">${counts.backlog}</div>
+          <div class="k-label">Backlog</div>
         </div>
-      `;
+        <div class="k-stat">
+          <div class="k-num num-t">${counts.todo}</div>
+          <div class="k-label">To Do</div>
+        </div>
+        <div class="k-stat">
+          <div class="k-num num-p">${counts['in-progress']}</div>
+          <div class="k-label">In Progress</div>
+        </div>
+        <div class="k-stat">
+          <div class="k-num num-d">${counts.done}</div>
+          <div class="k-label">Done</div>
+        </div>`;
+    } catch (e) {
+      kgrid.innerHTML = `<div style="color:var(--red);font-size:.8rem;padding:.5rem">Error: ${esc(e.message)}</div>`;
     }
-    
-    async function postComment(taskId) {
-      const input = document.getElementById('comment-text');
-      const content = input.value.trim();
-      if (!content) return;
-      
-      const fromUser = 'Matt';
-      
-      const msg = await api('POST', 'messages', {
-        task_id: taskId,
-        from_user: fromUser,
-        content: content
-      });
-      
-      const mentions = content.match(/@(\w+)/g) || [];
-      const task = tasks.find(t => t.id === taskId);
-      
-      for (const mention of mentions) {
-        const agentName = mention.slice(1).toLowerCase();
-        const agent = agents.find(a => a.name.toLowerCase() === agentName);
-        
-        if (agent) {
-          await api('POST', 'notifications', {
-            mentioned_agent_id: agent.id,
-            source_message_id: msg[0]?.id,
-            content: `👤 ${fromUser} mentioned you on "${task?.title}": ${content}`
-          });
-        }
-      }
-      
-      await api('POST', 'activity_log', {
-        id: crypto.randomUUID(),
-        action: `commented on "${task?.title}"`,
-        category: 'task',
-        source: fromUser
-      });
-      
-      input.value = '';
-      await renderTaskDetail(taskId);
-      await loadActivities();
+  }
+
+  /* ─── ACTIVITY FEED (messages) ─── */
+  async function loadFeed() {
+    const list = document.getElementById('feed-list');
+    try {
+      const msgs = await api('messages?role=eq.system&order=created_at.desc&limit=20&select=session_key,channel,content,created_at');
+      if (!msgs.length) { list.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--text-dim);font-size:.8rem">No system messages yet</div>'; return; }
+      list.innerHTML = msgs.map(m => {
+        const preview = m.content.replace(/\n+/g,' ').substring(0, 120);
+        const sess = m.session_key ? m.session_key.replace('agent:main:','').replace('agent:','') : '?';
+        return `
+          <div class="feed-item">
+            <span class="feed-ch">${esc(m.channel || 'sys')}</span>
+            <div class="feed-body">
+              <div class="feed-sess">${esc(sess)}</div>
+              <div class="feed-content">${esc(preview)}</div>
+            </div>
+            <span class="feed-time">${timeAgo(m.created_at)}</span>
+          </div>`;
+      }).join('');
+    } catch (e) {
+      list.innerHTML = `<div style="color:var(--red);font-size:.8rem;padding:.5rem">Error: ${esc(e.message)}</div>`;
     }
-    
-    function showPanel(panel) {
-      document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
-      document.querySelector(`.panel-tab:${panel === 'activity' ? 'first-child' : 'last-child'}`).classList.add('active');
-      document.getElementById('activity-panel').style.display = panel === 'activity' ? 'block' : 'none';
-      document.getElementById('detail-panel').style.display = panel === 'detail' ? 'block' : 'none';
+  }
+
+  /* ─── FULL ACTIVITY LOG ─── */
+  async function loadLog() {
+    const tbody = document.getElementById('log-body');
+    const countEl = document.getElementById('log-count');
+    try {
+      const logs = await api('activity_log?order=created_at.desc&limit=50&select=action,category,description,source,created_at');
+      countEl.textContent = `${logs.length} entries`;
+      if (!logs.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-dim);padding:1.5rem">No activity logged yet</td></tr>'; return; }
+      tbody.innerHTML = logs.map(l => {
+        const cc = catClass(l.category || 'other');
+        return `
+          <tr>
+            <td><span class="cat ${cc}">${esc(l.category || 'other')}</span></td>
+            <td>
+              <div class="log-action">${esc(l.action)}</div>
+              ${l.description ? `<div class="log-desc">${esc(l.description)}</div>` : ''}
+            </td>
+            <td class="log-source">${esc(l.source || '—')}</td>
+            <td class="log-time">${timeAgo(l.created_at)}</td>
+          </tr>`;
+      }).join('');
+    } catch (e) {
+      tbody.innerHTML = `<tr><td colspan="4" style="color:var(--red);font-size:.8rem;padding:.5rem">Error: ${esc(e.message)}</td></tr>`;
     }
-    
-    function openModal() {
-      document.getElementById('modal').classList.add('active');
-      document.getElementById('task-title').value = '';
-      document.getElementById('task-desc').value = '';
-      document.getElementById('task-assignee').value = 'maverick';
-      document.getElementById('task-priority').value = 'medium';
-    }
-    
-    function closeModal() {
-      document.getElementById('modal').classList.remove('active');
-    }
-    
-    async function saveTask() {
-      const title = document.getElementById('task-title').value.trim();
-      if (!title) return alert('Title required');
-      
-      const task = {
-        id: crypto.randomUUID(),
-        title,
-        description: document.getElementById('task-desc').value,
-        assignee: document.getElementById('task-assignee').value,
-        priority: document.getElementById('task-priority').value,
-        status: 'backlog'
-      };
-      
-      await api('POST', 'kanban_tasks', task);
-      
-      await api('POST', 'activity_log', {
-        id: crypto.randomUUID(),
-        action: `created task "${title}"`,
-        category: 'task',
-        source: 'Matt'
-      });
-      
-      closeModal();
-      await loadTasks();
-      await loadActivities();
-    }
-    
-    function setupDragDrop() {
-      document.querySelectorAll('.task-card').forEach(card => {
-        card.addEventListener('dragstart', e => {
-          e.dataTransfer.setData('text/plain', card.dataset.id);
-          card.classList.add('dragging');
-        });
-        card.addEventListener('dragend', () => card.classList.remove('dragging'));
-      });
-      
-      document.querySelectorAll('.tasks-list').forEach(list => {
-        list.addEventListener('dragover', e => {
-          e.preventDefault();
-          list.classList.add('drop-zone');
-        });
-        list.addEventListener('dragleave', () => list.classList.remove('drop-zone'));
-        list.addEventListener('drop', async e => {
-          e.preventDefault();
-          list.classList.remove('drop-zone');
-          const taskId = e.dataTransfer.getData('text/plain');
-          const newStatus = list.id.replace('tasks-', '');
-          await updateTaskStatus(taskId, newStatus);
-        });
-      });
-    }
-    
-    async function updateTaskStatus(taskId, newStatus) {
-      await api('PATCH', `kanban_tasks?id=eq.${taskId}`, { status: newStatus, updated_at: new Date().toISOString() });
-      
-      const task = tasks.find(t => t.id === taskId);
-      await api('POST', 'activity_log', {
-        id: crypto.randomUUID(),
-        action: `moved "${task?.title}" to ${newStatus}`,
-        category: 'task',
-        source: 'Matt'
-      });
-      
-      await loadTasks();
-      await loadActivities();
-    }
-    
-    async function changeTaskStatus(taskId, newStatus) {
-      await updateTaskStatus(taskId, newStatus);
-      if (selectedTaskId === taskId) {
-        await renderTaskDetail(taskId);
-      }
-    }
-    
-    function timeAgo(dateStr) {
-      const now = new Date();
-      const date = new Date(dateStr);
-      const seconds = Math.floor((now - date) / 1000);
-      
-      if (seconds < 60) return 'just now';
-      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-      if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-      return `${Math.floor(seconds / 86400)}d ago`;
-    }
-    
-    function escapeHtml(str) {
-      if (!str) return '';
-      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-    
-    function highlightMentions(str) {
-      if (!str) return '';
-      return escapeHtml(str).replace(/@(\w+)/g, '<span style="color: var(--accent-blue); font-weight: 600;">@$1</span>');
-    }
-    
-    async function init() {
-      try {
-        await Promise.all([loadAgents(), loadTasks(), loadActivities()]);
-        document.getElementById('sync-status').textContent = '● Connected';
-        document.getElementById('sync-status').className = 'sync-status connected';
-      } catch (e) {
-        console.error(e);
-        document.getElementById('sync-status').textContent = '● Error';
-        document.getElementById('sync-status').className = 'sync-status error';
-      }
-    }
-    
-    // Init is called by checkSession() if authenticated
-    
-    // Mobile navigation
-    function showMobileView(view) {
-      const sidebar = document.querySelector('.sidebar');
-      const main = document.querySelector('.main');
-      const rightPanel = document.querySelector('.right-panel');
-      const navBtns = document.querySelectorAll('.mobile-nav-btn');
-      
-      // Reset all
-      sidebar.classList.remove('mobile-active');
-      rightPanel.classList.remove('mobile-active');
-      main.classList.remove('mobile-hidden');
-      navBtns.forEach(btn => btn.classList.remove('active'));
-      
-      // Activate selected view
-      if (view === 'squad') {
-        sidebar.classList.add('mobile-active');
-        main.classList.add('mobile-hidden');
-        navBtns[1].classList.add('active');
-      } else if (view === 'activity') {
-        rightPanel.classList.add('mobile-active');
-        main.classList.add('mobile-hidden');
-        showPanel('activity');
-        navBtns[2].classList.add('active');
-      } else {
-        navBtns[0].classList.add('active');
-      }
-    }
-    
-    setInterval(async () => {
-      await Promise.all([loadAgents(), loadTasks(), loadActivities()]);
-    }, 30000);
-    
-    // Expose functions for onclick handlers (required for ES modules)
-    window.showMobileView = showMobileView;
-    window.openModal = openModal;
-    window.closeModal = closeModal;
-    window.saveTask = saveTask;
-    window.selectTask = selectTask;
-    window.showPanel = showPanel;
-    window.setActivityFilter = setActivityFilter;
-    window.postComment = postComment;
-    window.changeTaskStatus = changeTaskStatus;
-  </script>
+  }
+
+  /* ─── MAIN LOAD ─── */
+  async function loadAll() {
+    document.getElementById('last-refresh').textContent = 'refreshing…';
+    await Promise.allSettled([
+      loadAgents(),
+      loadInbox(),
+      loadKanbanSummary(),
+      loadFeed(),
+      loadLog()
+    ]);
+    document.getElementById('last-refresh').textContent = 'Updated ' + new Date().toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+  }
+
+  // Initial load + auto-refresh every 60s
+  loadAll();
+  setInterval(loadAll, 60000);
+</script>
 </body>
 </html>
