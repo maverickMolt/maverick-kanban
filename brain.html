@@ -1011,7 +1011,8 @@ async function poll() {
     document.getElementById('lastUpdate').textContent = `updated ${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
 
   } catch(err) {
-    document.getElementById('lastUpdate').textContent = `⚠ ${err.message}`;
+    console.error('Brain poll error:', err);
+    document.getElementById('lastUpdate').textContent = `⚠ ${err.message} — ${err.stack?.split('\n')[1]?.trim() || ''}`;
   }
 }
 
