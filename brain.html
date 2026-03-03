@@ -1015,6 +1015,12 @@ async function poll() {
     const entries = await fetchEntries();
     const newEntries = entries.filter(e => !knownIds.has(e.id));
 
+    // Always update hero + progress with latest data even if no new entries
+    if (allEntries.length > 0) {
+      updateHero(allEntries);
+      updateProgressPanel(allEntries);
+    }
+
     if (newEntries.length > 0) {
       // Hide empty state
       const empty = document.getElementById('emptyState');
@@ -1051,10 +1057,8 @@ async function poll() {
         if (last) last.remove();
       }
 
-      // Update sidebars + hero
-      updateHero(allEntries);
+      // Update tool sidebar
       updateToolPanel(newEntries);
-      updateProgressPanel(allEntries);
     }
 
     document.getElementById('entryCount').textContent = `${allEntries.length} entries`;
