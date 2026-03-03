@@ -973,9 +973,9 @@ async function poll() {
       newEntries.forEach(e => knownIds.add(e.id));
       allEntries = entries;
 
-      // Render new cards at top of stream
+      // Render new cards at top of stream — reverse so newest ends up on top
       const stream = document.getElementById('thoughtStream');
-      newEntries.forEach(entry => {
+      [...newEntries].reverse().forEach(entry => {
         const card = renderCard(entry, true);
         stream.insertBefore(card, stream.firstChild);
 
