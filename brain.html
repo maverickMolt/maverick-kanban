@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maverick's Brain 🧠</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #080c14;
+      --surface: #0d1220;
+      --surface2: #121828;
+      --border: #1a2540;
+      --border2: #223060;
+      --text: #e2e8f0;
+      --text-muted: #7a8fbb;
+      --text-dim: #3d4f72;
+      --teal: #00e5c8;
+      --teal-dim: rgba(0,229,200,0.08);
+      --teal-glow: rgba(0,229,200,0.25);
+      --gold: #ffc553;
+      --gold-dim: rgba(255,197,83,0.08);
+      --gold-glow: rgba(255,197,83,0.25);
+      --purple: #a78bfa;
+      --blue: #60a5fa;
+      --green: #34d399;
+      --red: #f87171;
+      --orange: #fb923c;
+      --pink: #f472b6;
+      --font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+      --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 14px;
+      line-height: 1.5;
+      overflow-x: hidden;
+    }
+
+    /* Animated background grid */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,229,200,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,229,200,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* HEADER */
+    .header {
+      background: rgba(13,18,32,0.95);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0.875rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .header-left { display: flex; align-items: center; gap: 0.75rem; }
+    .brain-icon { font-size: 1.4rem; animation: float 3s ease-in-out infinite; }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+    .header-title { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
+    .header-title span { color: var(--teal); }
+    .header-session {
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      font-family: var(--mono);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+    }
+    .header-right { display: flex; align-items: center; gap: 1rem; }
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--teal);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .live-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--teal);
+      box-shadow: 0 0 8px var(--teal);
+      animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(0.8)} }
+    .status-text { font-size: 0.72rem; color: var(--text-muted); font-family: var(--mono); }
+
+    /* SESSION FILTER BAR */
+    .filter-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0.5rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .filter-label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; }
+    .filter-input {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      padding: 0.3rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-family: var(--mono);
+      width: 220px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .filter-input:focus { border-color: var(--teal); box-shadow: 0 0 0 2px var(--teal-dim); }
+    .filter-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text-muted);
+      padding: 0.3rem 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-family: var(--font);
+      transition: all 0.15s;
+    }
+    .filter-btn:hover, .filter-btn.active { color: var(--teal); border-color: var(--teal); background: var(--teal-dim); }
+    .filter-spacer { flex: 1; }
+    .entry-count { font-size: 0.68rem; color: var(--text-dim); font-family: var(--mono); }
+
+    /* MAIN LAYOUT */
+    .layout {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 260px 1fr 280px;
+      gap: 0;
+      height: calc(100vh - 100px);
+    }
+
+    /* PANEL BASE */
+    .panel {
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .panel:last-child { border-right: none; }
+    .panel-header {
+      padding: 0.875rem 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+    .panel-title {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+    .panel-icon { font-size: 0.9rem; }
+    .panel-body { flex: 1; overflow-y: auto; padding: 0.75rem; }
+    .panel-body::-webkit-scrollbar { width: 4px; }
+    .panel-body::-webkit-scrollbar-track { background: transparent; }
+    .panel-body::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+    /* ===================== */
+    /* LEFT: TOOL ACTIVITY   */
+    /* ===================== */
+    .tool-grid { display: flex; flex-direction: column; gap: 0.5rem; }
+    .tool-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.625rem 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .tool-card.active {
+      border-color: var(--tool-color, var(--teal));
+      box-shadow: 0 0 12px var(--tool-glow, var(--teal-glow));
+    }
+    .tool-card.active::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, var(--tool-bg, var(--teal-dim)), transparent);
+      pointer-events: none;
+    }
+    .tool-icon {
+      font-size: 1.2rem;
+      width: 28px;
+      text-align: center;
+      flex-shrink: 0;
+      transition: transform 0.3s;
+    }
+    .tool-card.active .tool-icon { animation: tool-pulse 1s ease-in-out infinite; }
+    @keyframes tool-pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.2)} }
+    .tool-info { flex: 1; min-width: 0; }
+    .tool-name { font-size: 0.78rem; font-weight: 600; color: var(--text); }
+    .tool-last { font-size: 0.65rem; color: var(--text-dim); font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tool-count {
+      font-size: 0.72rem;
+      font-weight: 700;
+      font-family: var(--mono);
+      color: var(--tool-color, var(--text-muted));
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.1rem 0.4rem;
+      min-width: 24px;
+      text-align: center;
+    }
+    /* Particle burst on tool activation */
+    .particle-container { position: fixed; pointer-events: none; z-index: 999; }
+    .particle {
+      position: absolute;
+      width: 4px; height: 4px;
+      border-radius: 50%;
+      animation: particle-fly 0.8s ease-out forwards;
+    }
+    @keyframes particle-fly {
+      0% { opacity: 1; transform: translate(0,0) scale(1); }
+      100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
+    }
+
+    /* Recent tool call list */
+    .tool-recents { margin-top: 1rem; }
+    .tool-recents-title { font-size: 0.62rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.5rem; }
+    .tool-recent-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
+    .tool-recent-item:last-child { border-bottom: none; }
+    .tool-recent-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+    .tool-recent-action { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .tool-recent-time { font-family: var(--mono); font-size: 0.62rem; color: var(--text-dim); flex-shrink: 0; }
+
+    /* ===================== */
+    /* CENTER: THOUGHT STREAM */
+    /* ===================== */
+    .thought-stream {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      padding: 0.75rem;
+      overflow-y: auto;
+    }
+    .thought-stream::-webkit-scrollbar { width: 4px; }
+    .thought-stream::-webkit-scrollbar-track { background: transparent; }
+    .thought-stream::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+    .thought-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--card-color, var(--teal));
+      border-radius: 8px;
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      animation: card-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      transform-origin: bottom center;
+      position: relative;
+      overflow: hidden;
+    }
+    .thought-card.new {
+      box-shadow: 0 0 20px var(--card-glow, var(--teal-glow));
+    }
+    @keyframes card-in {
+      0% { opacity: 0; transform: translateY(20px) scale(0.96); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .thought-card.fading { opacity: 0.4; transition: opacity 2s ease; }
+
+    .thought-card-shimmer {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
+      animation: shimmer 2s ease-in-out;
+      pointer-events: none;
+    }
+    @keyframes shimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(100%)} }
+
+    .thought-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 0.1rem; }
+    .thought-body { flex: 1; min-width: 0; }
+    .thought-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem; }
+    .thought-action {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .thought-category {
+      font-size: 0.62rem;
+      font-weight: 600;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .thought-desc { font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; }
+    .thought-time { font-size: 0.65rem; color: var(--text-dim); font-family: var(--mono); margin-top: 0.35rem; }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 1rem;
+      color: var(--text-dim);
+      text-align: center;
+      padding: 2rem;
+    }
+    .empty-brain { font-size: 3rem; animation: float 3s ease-in-out infinite; }
+    .empty-title { font-size: 0.9rem; font-weight: 600; color: var(--text-muted); }
+    .empty-sub { font-size: 0.78rem; line-height: 1.6; }
+
+    /* Scan line for "active" feel */
+    .scan-line {
+      position: sticky;
+      bottom: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--teal), transparent);
+      animation: scan 3s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes scan { 0%,100%{opacity:0.3} 50%{opacity:1} }
+
+    /* ===================== */
+    /* RIGHT: TASK PROGRESS  */
+    /* ===================== */
+    .progress-panel { }
+    .task-summary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.875rem;
+      margin-bottom: 0.75rem;
+    }
+    .task-label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.4rem; }
+    .task-title { font-size: 0.92rem; font-weight: 700; color: var(--text); margin-bottom: 0.75rem; line-height: 1.4; }
+    .progress-bar-wrap { background: var(--surface2); border-radius: 4px; height: 6px; overflow: hidden; margin-bottom: 0.4rem; }
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      background: linear-gradient(90deg, var(--teal), var(--gold));
+      box-shadow: 0 0 8px var(--teal-glow);
+      transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .progress-pct { font-size: 0.68rem; color: var(--teal); font-family: var(--mono); font-weight: 700; }
+
+    .steps-list { display: flex; flex-direction: column; gap: 0.375rem; }
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      padding: 0.5rem 0.625rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      transition: all 0.3s;
+    }
+    .step-item.done { opacity: 0.6; }
+    .step-item.active {
+      border-color: var(--teal);
+      background: var(--teal-dim);
+      box-shadow: 0 0 8px var(--teal-glow);
+    }
+    .step-check {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--border2);
+      flex-shrink: 0;
+      margin-top: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+      transition: all 0.3s;
+    }
+    .step-item.done .step-check { background: var(--green); border-color: var(--green); color: #000; }
+    .step-item.active .step-check { border-color: var(--teal); box-shadow: 0 0 6px var(--teal); animation: spin 1.5s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .step-text { font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; flex: 1; }
+    .step-item.active .step-text { color: var(--text); }
+    .step-item.done .step-text { text-decoration: line-through; color: var(--text-dim); }
+    .step-time { font-size: 0.62rem; color: var(--text-dim); font-family: var(--mono); flex-shrink: 0; }
+
+    /* Stats */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.75rem; }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.625rem;
+      text-align: center;
+    }
+    .stat-val { font-size: 1.2rem; font-weight: 700; font-family: var(--mono); color: var(--teal); }
+    .stat-label { font-size: 0.62rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; }
+
+    /* Category breakdown */
+    .category-breakdown { margin-top: 0.75rem; }
+    .cat-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem; }
+    .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .cat-name { font-size: 0.72rem; color: var(--text-muted); flex: 1; }
+    .cat-bar-wrap { width: 60px; background: var(--surface2); border-radius: 2px; height: 4px; overflow: hidden; }
+    .cat-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
+    .cat-count { font-size: 0.65rem; color: var(--text-dim); font-family: var(--mono); width: 20px; text-align: right; }
+
+    /* MOBILE */
+    @media (max-width: 768px) {
+      .layout { grid-template-columns: 1fr; grid-template-rows: auto; height: auto; }
+      .panel { border-right: none; border-bottom: 1px solid var(--border); min-height: 300px; }
+      .panel:last-child { border-bottom: none; }
+      .filter-input { width: 160px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="particle-container" id="particles"></div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-left">
+    <div class="brain-icon">🧠</div>
+    <div>
+      <div class="header-title">Maverick's <span>Brain</span></div>
+    </div>
+    <div class="header-session" id="sessionLabel">all sessions</div>
+  </div>
+  <div class="header-right">
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      Live
+    </div>
+    <div class="status-text" id="lastUpdate">connecting...</div>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filter-bar">
+  <span class="filter-label">Session</span>
+  <input class="filter-input" id="sessionFilter" type="text" placeholder="filter by session key..." />
+  <button class="filter-btn" id="clearFilter">All</button>
+  <button class="filter-btn" id="applyFilter">Apply</button>
+  <div class="filter-spacer"></div>
+  <span class="entry-count" id="entryCount">— entries</span>
+</div>
+
+<!-- THREE-ZONE LAYOUT -->
+<div class="layout">
+
+  <!-- LEFT: TOOL ACTIVITY -->
+  <div class="panel" id="toolPanel">
+    <div class="panel-header">
+      <span class="panel-icon">⚡</span>
+      <span class="panel-title">Tool Activity</span>
+    </div>
+    <div class="panel-body" id="toolBody">
+      <div class="tool-grid" id="toolGrid"></div>
+      <div class="tool-recents" id="toolRecents">
+        <div class="tool-recents-title">Recent calls</div>
+        <div id="toolRecentList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER: THOUGHT STREAM -->
+  <div class="panel" style="border-right:1px solid var(--border);">
+    <div class="panel-header">
+      <span class="panel-icon">💭</span>
+      <span class="panel-title">Thought Stream</span>
+    </div>
+    <div class="thought-stream" id="thoughtStream">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-brain">🧠</div>
+        <div class="empty-title">No activity yet</div>
+        <div class="empty-sub">When Maverick starts working,<br>thoughts will stream in here.</div>
+      </div>
+    </div>
+    <div class="scan-line"></div>
+  </div>
+
+  <!-- RIGHT: TASK PROGRESS -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-icon">📋</span>
+      <span class="panel-title">Task Progress</span>
+    </div>
+    <div class="panel-body" id="progressBody">
+      <div class="task-summary" id="taskSummary">
+        <div class="task-label">Current Task</div>
+        <div class="task-title" id="taskTitle">Waiting for activity...</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+        </div>
+        <div class="progress-pct" id="progressPct">0%</div>
+      </div>
+
+      <div class="steps-list" id="stepsList"></div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-val" id="statActions">0</div>
+          <div class="stat-label">Actions</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="statDuration">—</div>
+          <div class="stat-label">Duration</div>
+        </div>
+      </div>
+
+      <div class="category-breakdown" id="catBreakdown"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const SUPABASE_URL = 'https://npnqnsjmcyzkpoqynadr.supabase.co';
+const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5wbnFuc2ptY3l6a3BvcXluYWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3MjcxMDcsImV4cCI6MjA4NTMwMzEwN30.unckvGv1xozWSGGt5adOFKgffzZtyGNn5j_tsCm72WU';
+
+// ── Config ─────────────────────────────────────────────
+const POLL_INTERVAL = 2000;
+const MAX_CARDS = 50;
+const FADE_AFTER = 5; // cards beyond this start fading
+
+// ── Category → visual config ──────────────────────────
+const CATEGORY_CONFIG = {
+  content:        { icon: '✍️',  color: '#a78bfa', glow: 'rgba(167,139,250,0.25)', bg: 'rgba(167,139,250,0.06)', label: 'Content',    dot: '#a78bfa' },
+  infrastructure: { icon: '⚙️',  color: '#60a5fa', glow: 'rgba(96,165,250,0.25)',  bg: 'rgba(96,165,250,0.06)',  label: 'Infra',      dot: '#60a5fa' },
+  cost:           { icon: '💰',  color: '#ffc553', glow: 'rgba(255,197,83,0.25)',  bg: 'rgba(255,197,83,0.06)',  label: 'Cost',       dot: '#ffc553' },
+  incident:       { icon: '🚨',  color: '#f87171', glow: 'rgba(248,113,113,0.25)', bg: 'rgba(248,113,113,0.06)', label: 'Incident',   dot: '#f87171' },
+  engagement:     { icon: '📣',  color: '#34d399', glow: 'rgba(52,211,153,0.25)',  bg: 'rgba(52,211,153,0.06)',  label: 'Engagement', dot: '#34d399' },
+  research:       { icon: '🔬',  color: '#00e5c8', glow: 'rgba(0,229,200,0.25)',   bg: 'rgba(0,229,200,0.06)',   label: 'Research',   dot: '#00e5c8' },
+  default:        { icon: '💡',  color: '#7a8fbb', glow: 'rgba(122,143,187,0.2)',  bg: 'rgba(122,143,187,0.05)', label: 'Activity',   dot: '#7a8fbb' },
+};
+
+// ── Tool detection from action text ───────────────────
+const TOOL_PATTERNS = [
+  { name: 'Web Search',  icon: '🔍', color: '#60a5fa', glow: 'rgba(96,165,250,0.25)',  bg: 'rgba(96,165,250,0.07)',  pattern: /search|browse|lookup|query/i },
+  { name: 'File I/O',    icon: '📄', color: '#a78bfa', glow: 'rgba(167,139,250,0.25)', bg: 'rgba(167,139,250,0.07)', pattern: /read|write|file|edit|create|draft/i },
+  { name: 'API Call',    icon: '🌐', color: '#00e5c8', glow: 'rgba(0,229,200,0.25)',   bg: 'rgba(0,229,200,0.07)',   pattern: /api|curl|request|fetch|post|supabase/i },
+  { name: 'Code Exec',   icon: '⚡', color: '#ffc553', glow: 'rgba(255,197,83,0.25)',  bg: 'rgba(255,197,83,0.07)',  pattern: /exec|run|script|deploy|build|command/i },
+  { name: 'iMessage',    icon: '💬', color: '#34d399', glow: 'rgba(52,211,153,0.25)', bg: 'rgba(52,211,153,0.07)',  pattern: /imessage|sms|text|message|send/i },
+  { name: 'Memory',      icon: '🧠', color: '#f472b6', glow: 'rgba(244,114,182,0.25)', bg: 'rgba(244,114,182,0.07)', pattern: /memory|remember|recall|log/i },
+  { name: 'Other',       icon: '🔧', color: '#7a8fbb', glow: 'rgba(122,143,187,0.2)',  bg: 'rgba(122,143,187,0.06)', pattern: /.*/ },
+];
+
+// ── State ─────────────────────────────────────────────
+let knownIds = new Set();
+let allEntries = [];
+let toolStats = {};
+let sessionFilter = '';
+let pollTimer = null;
+let startTime = null;
+
+// ── URL param session ──────────────────────────────────
+function getUrlSession() {
+  const p = new URLSearchParams(window.location.search);
+  return p.get('session') || '';
+}
+
+// ── Supabase fetch ─────────────────────────────────────
+async function fetchEntries() {
+  let url = `${SUPABASE_URL}/rest/v1/activity_log?select=*&order=created_at.desc&limit=100`;
+  if (sessionFilter) {
+    url += `&source=eq.${encodeURIComponent(sessionFilter)}`;
+  }
+  const res = await fetch(url, {
+    headers: { 'apikey': ANON_KEY, 'Authorization': `Bearer ${ANON_KEY}` }
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// ── Category config helper ─────────────────────────────
+function getCat(category) {
+  return CATEGORY_CONFIG[category] || CATEGORY_CONFIG.default;
+}
+
+// ── Tool detection ────────────────────────────────────
+function detectTool(entry) {
+  const text = `${entry.action} ${entry.description}`;
+  for (const t of TOOL_PATTERNS) {
+    if (t.pattern.test(text)) return t;
+  }
+  return TOOL_PATTERNS[TOOL_PATTERNS.length - 1];
+}
+
+// ── Time formatting ────────────────────────────────────
+function timeAgo(ts) {
+  const diff = Date.now() - new Date(ts).getTime();
+  if (diff < 60000) return `${Math.floor(diff/1000)}s ago`;
+  if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
+  return new Date(ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+
+function duration(ms) {
+  if (ms < 60000) return `${Math.floor(ms/1000)}s`;
+  if (ms < 3600000) return `${Math.floor(ms/60000)}m ${Math.floor((ms%60000)/1000)}s`;
+  return `${Math.floor(ms/3600000)}h ${Math.floor((ms%3600000)/60000)}m`;
+}
+
+// ── Particle burst ─────────────────────────────────────
+function burst(x, y, color) {
+  const container = document.getElementById('particles');
+  for (let i = 0; i < 8; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const angle = (i / 8) * 360;
+    const dist = 30 + Math.random() * 30;
+    const tx = Math.cos(angle * Math.PI / 180) * dist + 'px';
+    const ty = Math.sin(angle * Math.PI / 180) * dist + 'px';
+    p.style.cssText = `left:${x}px;top:${y}px;background:${color};--tx:${tx};--ty:${ty}`;
+    container.appendChild(p);
+    setTimeout(() => p.remove(), 900);
+  }
+}
+
+// ── Render thought card ────────────────────────────────
+function renderCard(entry, isNew) {
+  const cat = getCat(entry.category);
+  const card = document.createElement('div');
+  card.className = 'thought-card' + (isNew ? ' new' : '');
+  card.dataset.id = entry.id;
+  card.style.setProperty('--card-color', cat.color);
+  card.style.setProperty('--card-glow', cat.glow);
+
+  const shimmer = isNew ? '<div class="thought-card-shimmer"></div>' : '';
+
+  card.innerHTML = `
+    ${shimmer}
+    <div class="thought-icon">${cat.icon}</div>
+    <div class="thought-body">
+      <div class="thought-header">
+        <span class="thought-action">${escHtml(entry.action)}</span>
+        <span class="thought-category" style="background:${cat.bg};color:${cat.color}">${cat.label}</span>
+      </div>
+      <div class="thought-desc">${escHtml(entry.description || '—')}</div>
+      <div class="thought-time">${timeAgo(entry.created_at)}</div>
+    </div>
+  `;
+  return card;
+}
+
+// ── Escape HTML ────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Update Tool Activity sidebar ──────────────────────
+function updateToolPanel(newEntries) {
+  newEntries.forEach(entry => {
+    const tool = detectTool(entry);
+    if (!toolStats[tool.name]) {
+      toolStats[tool.name] = { ...tool, count: 0, lastAction: '', lastTime: null };
+    }
+    toolStats[tool.name].count++;
+    toolStats[tool.name].lastAction = entry.action;
+    toolStats[tool.name].lastTime = entry.created_at;
+  });
+
+  const grid = document.getElementById('toolGrid');
+  grid.innerHTML = '';
+
+  Object.values(toolStats)
+    .sort((a,b) => b.count - a.count)
+    .forEach(t => {
+      const card = document.createElement('div');
+      card.className = 'tool-card' + (newEntries.some(e => detectTool(e).name === t.name) ? ' active' : '');
+      card.style.setProperty('--tool-color', t.color);
+      card.style.setProperty('--tool-glow', t.glow);
+      card.style.setProperty('--tool-bg', t.bg);
+      card.innerHTML = `
+        <div class="tool-icon">${t.icon}</div>
+        <div class="tool-info">
+          <div class="tool-name">${t.name}</div>
+          <div class="tool-last">${escHtml(t.lastAction || '—')}</div>
+        </div>
+        <div class="tool-count" style="color:${t.color}">${t.count}</div>
+      `;
+      grid.appendChild(card);
+    });
+
+  // Recent list (last 8)
+  const recentList = document.getElementById('toolRecentList');
+  recentList.innerHTML = '';
+  allEntries.slice(0,8).forEach(entry => {
+    const tool = detectTool(entry);
+    const item = document.createElement('div');
+    item.className = 'tool-recent-item';
+    item.innerHTML = `
+      <div class="tool-recent-dot" style="background:${tool.color}"></div>
+      <div class="tool-recent-action">${escHtml(entry.action)}</div>
+      <div class="tool-recent-time">${timeAgo(entry.created_at)}</div>
+    `;
+    recentList.appendChild(item);
+  });
+}
+
+// ── Synthesize task steps from activity stream ────────
+function synthesizeSteps(entries) {
+  if (!entries.length) return [];
+  // Group by category and deduplicate actions
+  const seen = new Map();
+  entries.slice().reverse().forEach((e, i) => {
+    const key = e.action.toLowerCase().trim();
+    if (!seen.has(key)) {
+      seen.set(key, { text: e.action, time: e.created_at, index: i, entry: e });
+    }
+  });
+  return Array.from(seen.values()).slice(0, 12);
+}
+
+// ── Update Task Progress sidebar ──────────────────────
+function updateProgressPanel(entries) {
+  if (!entries.length) return;
+
+  // Task title = first (oldest) action
+  const oldest = entries[entries.length - 1];
+  const newest = entries[0];
+  document.getElementById('taskTitle').textContent = oldest.action;
+
+  // Duration
+  if (!startTime) startTime = new Date(oldest.created_at).getTime();
+  const elapsed = Date.now() - startTime;
+  document.getElementById('statActions').textContent = entries.length;
+  document.getElementById('statDuration').textContent = duration(elapsed);
+
+  // Synthesize steps
+  const steps = synthesizeSteps(entries);
+  const total = steps.length;
+  const doneCount = Math.max(0, total - 1);
+  const pct = total > 1 ? Math.round((doneCount / total) * 100) : 0;
+
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressPct').textContent = pct + '%';
+
+  const stepsList = document.getElementById('stepsList');
+  stepsList.innerHTML = '';
+  steps.forEach((step, i) => {
+    const isDone = i < doneCount;
+    const isActive = i === doneCount;
+    const item = document.createElement('div');
+    item.className = 'step-item' + (isDone ? ' done' : '') + (isActive ? ' active' : '');
+    item.innerHTML = `
+      <div class="step-check">${isDone ? '✓' : ''}</div>
+      <div class="step-text">${escHtml(step.text)}</div>
+      <div class="step-time">${timeAgo(step.time)}</div>
+    `;
+    stepsList.appendChild(item);
+  });
+
+  // Category breakdown
+  const cats = {};
+  entries.forEach(e => {
+    const c = e.category || 'default';
+    cats[c] = (cats[c] || 0) + 1;
+  });
+  const maxCat = Math.max(...Object.values(cats));
+  const breakdown = document.getElementById('catBreakdown');
+  breakdown.innerHTML = '<div class="tool-recents-title" style="margin-bottom:0.5rem">By Category</div>';
+  Object.entries(cats).sort((a,b) => b[1]-a[1]).forEach(([cat, count]) => {
+    const cfg = getCat(cat);
+    const pct = Math.round((count / maxCat) * 100);
+    const row = document.createElement('div');
+    row.className = 'cat-row';
+    row.innerHTML = `
+      <div class="cat-dot" style="background:${cfg.dot}"></div>
+      <div class="cat-name">${cfg.label}</div>
+      <div class="cat-bar-wrap"><div class="cat-bar-fill" style="width:${pct}%;background:${cfg.dot}"></div></div>
+      <div class="cat-count">${count}</div>
+    `;
+    breakdown.appendChild(row);
+  });
+}
+
+// ── Main poll ──────────────────────────────────────────
+async function poll() {
+  try {
+    const entries = await fetchEntries();
+    const newEntries = entries.filter(e => !knownIds.has(e.id));
+
+    if (newEntries.length > 0) {
+      // Hide empty state
+      const empty = document.getElementById('emptyState');
+      if (empty) empty.remove();
+
+      newEntries.forEach(e => knownIds.add(e.id));
+      allEntries = entries;
+
+      // Render new cards at top of stream
+      const stream = document.getElementById('thoughtStream');
+      newEntries.forEach(entry => {
+        const card = renderCard(entry, true);
+        stream.insertBefore(card, stream.firstChild);
+
+        // Particle burst on new card
+        const rect = card.getBoundingClientRect();
+        const cat = getCat(entry.category);
+        setTimeout(() => burst(rect.left + 20, rect.top + 20, cat.color), 100);
+
+        // Remove "new" glow after 3s
+        setTimeout(() => card.classList.remove('new'), 3000);
+      });
+
+      // Fade old cards
+      const cards = stream.querySelectorAll('.thought-card');
+      cards.forEach((c, i) => {
+        if (i >= FADE_AFTER) c.classList.add('fading');
+        else c.classList.remove('fading');
+      });
+
+      // Trim to max
+      while (stream.querySelectorAll('.thought-card').length > MAX_CARDS) {
+        const last = stream.querySelector('.thought-card:last-of-type');
+        if (last) last.remove();
+      }
+
+      // Update sidebars
+      updateToolPanel(newEntries);
+      updateProgressPanel(allEntries);
+    }
+
+    document.getElementById('entryCount').textContent = `${allEntries.length} entries`;
+    document.getElementById('lastUpdate').textContent = `updated ${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'})}`;
+
+  } catch(err) {
+    document.getElementById('lastUpdate').textContent = `⚠ ${err.message}`;
+  }
+}
+
+// ── Filter controls ────────────────────────────────────
+document.getElementById('applyFilter').addEventListener('click', () => {
+  sessionFilter = document.getElementById('sessionFilter').value.trim();
+  document.getElementById('sessionLabel').textContent = sessionFilter || 'all sessions';
+  knownIds.clear();
+  allEntries = [];
+  toolStats = {};
+  startTime = null;
+  document.getElementById('thoughtStream').innerHTML = `
+    <div class="empty-state" id="emptyState">
+      <div class="empty-brain">🧠</div>
+      <div class="empty-title">No activity yet</div>
+      <div class="empty-sub">When Maverick starts working,<br>thoughts will stream in here.</div>
+    </div>`;
+  document.getElementById('toolGrid').innerHTML = '';
+  document.getElementById('toolRecentList').innerHTML = '';
+  document.getElementById('stepsList').innerHTML = '';
+  document.getElementById('catBreakdown').innerHTML = '';
+  poll();
+});
+
+document.getElementById('clearFilter').addEventListener('click', () => {
+  document.getElementById('sessionFilter').value = '';
+  document.getElementById('sessionLabel').textContent = 'all sessions';
+  sessionFilter = '';
+  document.getElementById('sessionLabel').textContent = 'all sessions';
+  knownIds.clear();
+  allEntries = [];
+  toolStats = {};
+  startTime = null;
+  poll();
+});
+
+document.getElementById('sessionFilter').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('applyFilter').click();
+});
+
+// ── Init ───────────────────────────────────────────────
+(function init() {
+  // Pick up ?session= from URL
+  const urlSession = getUrlSession();
+  if (urlSession) {
+    sessionFilter = urlSession;
+    document.getElementById('sessionFilter').value = urlSession;
+    document.getElementById('sessionLabel').textContent = urlSession;
+  }
+
+  poll();
+  setInterval(poll, POLL_INTERVAL);
+})();
+</script>
+</body>
+</html>
