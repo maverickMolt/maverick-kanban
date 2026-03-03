@@ -539,29 +539,48 @@
     .cat-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
     .cat-count { font-size: 0.65rem; color: var(--text-dim); font-family: var(--mono); width: 20px; text-align: right; }
 
-    /* MOBILE (fix #4) */
+    /* MOBILE PORTRAIT */
     @media (max-width: 768px) {
       .layout {
         display: flex;
         flex-direction: column;
         height: auto;
       }
-      /* Show only thought stream on mobile — sidebars hidden */
       #toolPanel { display: none; }
-      #progressBody { display: none; }
-      .panel:nth-child(3) .panel-header { display: none; }
-      .panel:nth-child(3) { display: none; }
+      #rightPanel { display: none; }
       .panel { border-right: none; border-bottom: none; height: auto; }
-      .thought-stream { height: calc(100vh - 200px); min-height: 300px; }
-      .filter-bar { gap: 0.4rem; }
-      .filter-input { width: 140px; }
-      .filter-label { display: none; }
-      /* Compact hero on mobile */
-      .hero { margin: 0.5rem; padding: 0.75rem 1rem; gap: 0.75rem; }
-      .hero-action { font-size: 1rem; }
-      .hero-elapsed { font-size: 1.1rem; }
+      .thought-stream { height: calc(100vh - 220px); min-height: 300px; }
+
+      /* Compact hero — single row */
+      .hero {
+        margin: 0.4rem 0.5rem;
+        padding: 0.6rem 0.875rem;
+        gap: 0.6rem;
+        border-radius: 10px;
+      }
+      .hero-icon { font-size: 1.4rem; }
+      .hero-action { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .hero-desc { display: none; }
+      .hero-elapsed { font-size: 1rem; }
+      .hero-elapsed-label { display: none; }
+      .hero-category { font-size: 0.6rem; padding: 0.15rem 0.4rem; }
+
+      /* Mini progress strip below hero */
+      .mobile-progress { display: flex; align-items: center; gap: 0.5rem; margin: 0 0.5rem 0.4rem; }
+      .mobile-progress-bar { flex: 1; height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+      .mobile-progress-fill { height: 100%; background: linear-gradient(90deg, var(--teal), var(--gold)); border-radius: 2px; transition: width 0.8s ease; }
+      .mobile-progress-pct { font-size: 0.65rem; color: var(--teal); font-family: var(--mono); font-weight: 700; flex-shrink: 0; }
+      .mobile-progress-label { font-size: 0.65rem; color: var(--text-dim); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+      /* Filter bar */
+      .filter-bar { gap: 0.4rem; padding: 0.4rem 0.75rem; }
+      .filter-input { width: 130px; }
+      .filter-label { display: none; }
+      .filter-spacer { display: none; }
     }
+
+    /* Hide mobile-progress on desktop */
+    .mobile-progress { display: none; }
   </style>
 </head>
 <body>
@@ -616,6 +635,13 @@
   </div>
 </div>
 
+<!-- MOBILE PROGRESS STRIP (portrait only) -->
+<div class="mobile-progress" id="mobileProgress">
+  <div class="mobile-progress-label" id="mobileProgressLabel">Waiting...</div>
+  <div class="mobile-progress-bar"><div class="mobile-progress-fill" id="mobileProgressFill" style="width:0%"></div></div>
+  <div class="mobile-progress-pct" id="mobileProgressPct">0%</div>
+</div>
+
 <!-- THREE-ZONE LAYOUT -->
 <div class="layout">
 
@@ -651,7 +677,7 @@
   </div>
 
   <!-- RIGHT: TASK PROGRESS -->
-  <div class="panel">
+  <div class="panel" id="rightPanel">
     <div class="panel-header">
       <span class="panel-icon">📋</span>
       <span class="panel-title">Task Progress</span>
@@ -939,6 +965,10 @@ function updateProgressPanel(entries) {
 
   document.getElementById('progressFill').style.width = pct + '%';
   document.getElementById('progressPct').textContent = pct + '%';
+  // Mobile strip
+  document.getElementById('mobileProgressFill').style.width = pct + '%';
+  document.getElementById('mobileProgressPct').textContent = pct + '%';
+  document.getElementById('mobileProgressLabel').textContent = entries[0]?.action || 'Working...';
 
   const stepsList = document.getElementById('stepsList');
   stepsList.innerHTML = '';
