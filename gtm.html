@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GTM Dashboard — Maverick</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      padding: 20px;
+    }
+
+    .container { max-width: 1300px; margin: 0 auto; }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #222;
+    }
+
+    header h1 { font-size: 1.4rem; font-weight: 600; }
+    header h1 span { color: #888; font-weight: 400; font-size: 1rem; margin-left: 8px; }
+
+    .refresh-btn {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      color: #aaa;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.15s;
+    }
+    .refresh-btn:hover { border-color: #555; color: #eee; }
+
+    /* Stats row */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+
+    .stat-label { font-size: 0.75rem; color: #666; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .stat-value { font-size: 1.8rem; font-weight: 700; color: #fff; }
+    .stat-value.green { color: #4ade80; }
+    .stat-value.yellow { color: #facc15; }
+    .stat-value.red { color: #f87171; }
+
+    /* Section headers */
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .section-header h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #ccc;
+    }
+
+    .badge {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 20px;
+      padding: 2px 10px;
+      font-size: 0.75rem;
+      color: #888;
+    }
+
+    .badge.urgent { background: #2d1a1a; border-color: #7f1d1d; color: #f87171; }
+
+    /* Apps table */
+    .apps-grid {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+
+    .app-card {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .app-name { font-weight: 600; font-size: 0.95rem; }
+    .app-url { font-size: 0.75rem; color: #555; margin-top: 2px; }
+    .app-url a { color: #555; text-decoration: none; }
+    .app-url a:hover { color: #888; }
+
+    .app-stat { text-align: center; }
+    .app-stat-val { font-size: 1.1rem; font-weight: 600; }
+    .app-stat-label { font-size: 0.7rem; color: #555; margin-top: 2px; }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .status-pill.active { background: #14291e; border: 1px solid #166534; color: #4ade80; }
+    .status-pill.pending { background: #1e1e14; border: 1px solid #4d4d00; color: #facc15; }
+    .status-pill.processing { background: #1a1a2e; border: 1px solid #1e3a5f; color: #60a5fa; }
+    .status-pill.sunset_warning { background: #2d1f00; border: 1px solid #7c3d00; color: #fb923c; }
+    .status-pill.sunset { background: #1f1212; border: 1px solid #450a0a; color: #f87171; }
+    .status-pill.failed { background: #1f1212; border: 1px solid #7f1d1d; color: #f87171; }
+    .status-pill.growth { background: #14291e; border: 1px solid #166534; color: #4ade80; }
+
+    /* Tasks */
+    .tasks-grid { display: grid; gap: 12px; margin-bottom: 32px; }
+
+    .task-card {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 18px 20px;
+    }
+
+    .task-card.urgent { border-color: #7f1d1d; }
+
+    .task-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .task-meta { display: flex; align-items: center; gap: 8px; }
+
+    .task-type {
+      background: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #888;
+    }
+
+    .task-type.tweet { border-color: #1d4ed8; color: #60a5fa; background: #0f1e3d; }
+    .task-type.ph_draft { border-color: #b45309; color: #fb923c; background: #2d1f00; }
+
+    .task-app { font-size: 0.85rem; color: #888; }
+    .task-deadline { font-size: 0.75rem; color: #555; }
+    .task-deadline.expiring { color: #fb923c; }
+
+    .task-content {
+      background: #0f0f0f;
+      border: 1px solid #1e1e1e;
+      border-radius: 6px;
+      padding: 12px 14px;
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: #ccc;
+      white-space: pre-wrap;
+      margin-bottom: 14px;
+      max-height: 160px;
+      overflow-y: auto;
+    }
+
+    .task-actions { display: flex; gap: 8px; }
+
+    .btn {
+      padding: 7px 16px;
+      border-radius: 6px;
+      border: 1px solid;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+
+    .btn-approve {
+      background: #14291e;
+      border-color: #166534;
+      color: #4ade80;
+    }
+    .btn-approve:hover { background: #166534; color: #fff; }
+
+    .btn-reject {
+      background: #1f1212;
+      border-color: #7f1d1d;
+      color: #f87171;
+    }
+    .btn-reject:hover { background: #7f1d1d; color: #fff; }
+
+    .btn-approve-all {
+      background: #0f1e3d;
+      border-color: #1d4ed8;
+      color: #60a5fa;
+      margin-left: auto;
+    }
+    .btn-approve-all:hover { background: #1d4ed8; color: #fff; }
+
+    /* Cron health */
+    .cron-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+
+    .cron-card {
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .cron-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .cron-dot.ok { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+    .cron-dot.failed { background: #f87171; box-shadow: 0 0 6px #f87171; }
+    .cron-dot.running { background: #60a5fa; box-shadow: 0 0 6px #60a5fa; }
+    .cron-dot.idle { background: #555; }
+
+    .cron-info { flex: 1; }
+    .cron-name { font-size: 0.85rem; font-weight: 500; }
+    .cron-time { font-size: 0.72rem; color: #555; margin-top: 2px; }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 40px;
+      color: #444;
+      font-size: 0.9rem;
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 10px;
+    }
+
+    .loading { color: #555; font-size: 0.85rem; padding: 20px 0; }
+
+    .section-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .last-updated { font-size: 0.75rem; color: #444; }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 12px 18px;
+      font-size: 0.85rem;
+      color: #ccc;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.2s;
+      z-index: 999;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { border-color: #166534; color: #4ade80; }
+    .toast.error { border-color: #7f1d1d; color: #f87171; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>🚀 GTM Dashboard <span>Nightly App Builder</span></h1>
+    <div style="display:flex;gap:10px;align-items:center">
+      <span class="last-updated" id="lastUpdated">Loading...</span>
+      <button class="refresh-btn" onclick="loadAll()">↻ Refresh</button>
+    </div>
+  </header>
+
+  <!-- Stats Row -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-label">Total Apps</div>
+      <div class="stat-value" id="statApps">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Active</div>
+      <div class="stat-value green" id="statActive">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total MRR</div>
+      <div class="stat-value green" id="statMrr">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total Signups</div>
+      <div class="stat-value" id="statSignups">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Conversions</div>
+      <div class="stat-value" id="statConversions">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pending Approval</div>
+      <div class="stat-value yellow" id="statQueue">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Sunset Warning</div>
+      <div class="stat-value red" id="statWarning">—</div>
+    </div>
+  </div>
+
+  <!-- Tasks Awaiting Approval -->
+  <div class="section-actions">
+    <div class="section-header" style="margin-bottom:0">
+      <h2>Tasks Awaiting Approval</h2>
+      <span class="badge urgent" id="taskBadge">0</span>
+    </div>
+    <button class="btn btn-approve-all" onclick="approveAll()">✓ Approve All</button>
+  </div>
+  <div class="tasks-grid" id="tasksGrid">
+    <div class="loading">Loading tasks...</div>
+  </div>
+
+  <!-- Apps -->
+  <div class="section-header">
+    <h2>Apps</h2>
+    <span class="badge" id="appsBadge">0</span>
+  </div>
+  <div class="apps-grid" id="appsGrid">
+    <div class="loading">Loading apps...</div>
+  </div>
+
+  <!-- Cron Health -->
+  <div class="section-header">
+    <h2>Cron Health</h2>
+  </div>
+  <div class="cron-grid" id="cronGrid">
+    <div class="loading">Loading cron status...</div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const SUPABASE_URL = 'https://zurarppamgjpcnlaslue.supabase.co';
+  const ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1cmFycHBhbWdqcGNubGFzbHVlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI4MDYxMTYsImV4cCI6MjA4ODM4MjExNn0.8iu09N2g4gTysQ_SdUzhWIGxezi_xu-jnvAFBqIzeJw';
+
+  const headers = {
+    'Authorization': `Bearer ${ANON_KEY}`,
+    'apikey': ANON_KEY,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=representation',
+  };
+
+  async function query(table, params = '') {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}${params}`, { headers });
+    return res.json();
+  }
+
+  async function patch(table, id, data) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}?id=eq.${id}`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(data),
+    });
+    return res.ok;
+  }
+
+  function toast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = `toast show ${type}`;
+    setTimeout(() => el.className = 'toast', 3000);
+  }
+
+  function timeAgo(dateStr) {
+    if (!dateStr) return '—';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor(diff / 60000);
+    if (h > 24) return `${Math.floor(h/24)}d ago`;
+    if (h > 0) return `${h}h ago`;
+    if (m > 0) return `${m}m ago`;
+    return 'just now';
+  }
+
+  function timeUntil(dateStr) {
+    if (!dateStr) return '—';
+    const diff = new Date(dateStr).getTime() - Date.now();
+    if (diff < 0) return 'expired';
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    if (h > 0) return `${h}h ${m}m left`;
+    return `${m}m left`;
+  }
+
+  function statusPill(status) {
+    const labels = {
+      active: '● Active', pending: '◌ Pending', processing: '◎ Processing',
+      sunset_warning: '⚠ Warning', sunset: '✕ Sunset', failed: '✕ Failed',
+      growth: '● Growth', launch: '◌ Launch',
+    };
+    return `<span class="status-pill ${status}">${labels[status] || status}</span>`;
+  }
+
+  async function loadApps() {
+    const apps = await query('apps', '?order=created_at.desc');
+    const grid = document.getElementById('appsGrid');
+    document.getElementById('appsBadge').textContent = apps.length;
+
+    if (!apps.length) {
+      grid.innerHTML = '<div class="empty-state">No apps yet. Nightly builder will add them here.</div>';
+      return apps;
+    }
+
+    grid.innerHTML = apps.map(app => `
+      <div class="app-card">
+        <div>
+          <div class="app-name">${app.name}</div>
+          <div class="app-url"><a href="${app.railway_url}" target="_blank">${app.railway_url || '—'}</a></div>
+          <div style="margin-top:6px">${statusPill(app.status)} ${app.gtm_phase ? statusPill(app.gtm_phase) : ''}</div>
+        </div>
+        <div class="app-stat">
+          <div class="app-stat-val" style="color:#4ade80">$${(app.mrr||0).toFixed(0)}</div>
+          <div class="app-stat-label">MRR</div>
+        </div>
+        <div class="app-stat">
+          <div class="app-stat-val">${app.unique_visitors||0}</div>
+          <div class="app-stat-label">Visitors</div>
+        </div>
+        <div class="app-stat">
+          <div class="app-stat-val">${app.signups||0}</div>
+          <div class="app-stat-label">Signups</div>
+        </div>
+        <div class="app-stat">
+          <div class="app-stat-val">${app.conversions||0}</div>
+          <div class="app-stat-label">Paid</div>
+        </div>
+        <div class="app-stat">
+          <div class="app-stat-val" style="color:#888;font-size:0.8rem">${timeAgo(app.created_at)}</div>
+          <div class="app-stat-label">Created</div>
+        </div>
+      </div>
+    `).join('');
+
+    // Update stats
+    document.getElementById('statApps').textContent = apps.length;
+    document.getElementById('statActive').textContent = apps.filter(a => a.status === 'active').length;
+    document.getElementById('statMrr').textContent = '$' + apps.reduce((s,a) => s + (a.mrr||0), 0).toFixed(0);
+    document.getElementById('statSignups').textContent = apps.reduce((s,a) => s + (a.signups||0), 0);
+    document.getElementById('statConversions').textContent = apps.reduce((s,a) => s + (a.conversions||0), 0);
+    document.getElementById('statWarning').textContent = apps.filter(a => a.status === 'sunset_warning').length;
+
+    return apps;
+  }
+
+  async function loadTasks() {
+    const tasks = await query('gtm_tasks', `?status=eq.waiting_approval&order=created_at.asc`);
+    const apps = await query('apps', '?select=id,name');
+    const appMap = Object.fromEntries(apps.map(a => [a.id, a.name]));
+
+    const grid = document.getElementById('tasksGrid');
+    document.getElementById('taskBadge').textContent = tasks.length;
+    document.getElementById('statQueue').textContent = tasks.length;
+
+    if (!tasks.length) {
+      grid.innerHTML = '<div class="empty-state">No tasks awaiting approval. 🎉</div>';
+      return;
+    }
+
+    grid.innerHTML = tasks.map(task => {
+      const deadline = timeUntil(task.approval_deadline);
+      const expiring = deadline.includes('h') && parseInt(deadline) < 4;
+      return `
+        <div class="task-card ${expiring ? 'urgent' : ''}">
+          <div class="task-header">
+            <div class="task-meta">
+              <span class="task-type ${task.task_type}">${task.task_type}</span>
+              <span class="task-app">${appMap[task.app_id] || 'Unknown App'}</span>
+            </div>
+            <span class="task-deadline ${expiring ? 'expiring' : ''}">⏱ ${deadline}</span>
+          </div>
+          <div class="task-content">${task.draft_content || '—'}</div>
+          <div class="task-actions">
+            <button class="btn btn-approve" onclick="approveTask('${task.id}', this)">✓ Approve</button>
+            <button class="btn btn-reject" onclick="rejectTask('${task.id}', this)">✕ Skip</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function loadCrons() {
+    const runs = await query('cron_runs', '?order=started_at.desc&limit=50');
+    const grid = document.getElementById('cronGrid');
+
+    const cronNames = ['gtm-launch', 'gtm-stripe', 'gtm-triage', 'gtm-weekly'];
+    const latest = {};
+    for (const run of runs) {
+      if (!latest[run.cron_name]) latest[run.cron_name] = run;
+    }
+
+    if (!Object.keys(latest).length) {
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">No cron runs recorded yet.</div>';
+      return;
+    }
+
+    grid.innerHTML = cronNames.map(name => {
+      const run = latest[name];
+      if (!run) return `
+        <div class="cron-card">
+          <div class="cron-dot idle"></div>
+          <div class="cron-info">
+            <div class="cron-name">${name}</div>
+            <div class="cron-time">Never run</div>
+          </div>
+        </div>
+      `;
+      return `
+        <div class="cron-card">
+          <div class="cron-dot ${run.status}"></div>
+          <div class="cron-info">
+            <div class="cron-name">${name}</div>
+            <div class="cron-time">${run.status} · ${timeAgo(run.completed_at || run.started_at)}</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  async function approveTask(id, btn) {
+    btn.disabled = true;
+    btn.textContent = '...';
+    const ok = await patch('gtm_tasks', id, {
+      status: 'approved',
+      approved_at: new Date().toISOString(),
+    });
+    if (ok) {
+      toast('Task approved ✓', 'success');
+      await loadTasks();
+    } else {
+      toast('Failed to approve', 'error');
+      btn.disabled = false;
+      btn.textContent = '✓ Approve';
+    }
+  }
+
+  async function rejectTask(id, btn) {
+    btn.disabled = true;
+    const ok = await patch('gtm_tasks', id, {
+      status: 'rejected',
+      rejected_at: new Date().toISOString(),
+      rejection_reason: 'Manually skipped via dashboard',
+    });
+    if (ok) {
+      toast('Task skipped', '');
+      await loadTasks();
+    } else {
+      toast('Failed to skip', 'error');
+      btn.disabled = false;
+    }
+  }
+
+  async function approveAll() {
+    const tasks = await query('gtm_tasks', '?status=eq.waiting_approval&select=id');
+    if (!tasks.length) { toast('No tasks to approve', ''); return; }
+    for (const t of tasks) {
+      await patch('gtm_tasks', t.id, {
+        status: 'approved',
+        approved_at: new Date().toISOString(),
+      });
+    }
+    toast(`Approved ${tasks.length} tasks ✓`, 'success');
+    await loadTasks();
+  }
+
+  async function loadAll() {
+    await Promise.all([loadApps(), loadTasks(), loadCrons()]);
+    document.getElementById('lastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+  }
+
+  // Auto-refresh every 60 seconds
+  loadAll();
+  setInterval(loadAll, 60000);
+</script>
+</body>
+</html>
