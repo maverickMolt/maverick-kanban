@@ -240,8 +240,13 @@
     .dc-title { font-weight: 600; font-size: 0.88rem; flex: 1; }
     .dc-prev { font-size: 0.74rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.5; }
     .dc-ft { display: flex; align-items: center; justify-content: space-between; font-size: 0.65rem; color: var(--text-dim); }
-    .doc-reader { background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; padding: 22px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; }
-    .dr-content { font-size: 0.83rem; color: var(--text-muted); line-height: 1.7; }
+    .doc-reader { background: var(--surface); border: 1px solid var(--border2); border-radius: 12px; padding: 22px; width: 100%; max-width: 780px; max-height: 88vh; overflow-y: auto; transition: max-width 0.2s ease, max-height 0.2s ease; }
+    .doc-reader.fullscreen { max-width: calc(100vw - 40px); max-height: calc(100vh - 40px); border-radius: 10px; }
+    .dr-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+    .dr-meta-pill { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 2px 10px; font-size: 0.68rem; color: var(--text-muted); }
+    .dr-meta-pill.cat { color: var(--teal); border-color: var(--teal); }
+    .dr-divider { height: 1px; background: var(--border); margin-bottom: 16px; }
+    .dr-content { font-size: 0.84rem; color: var(--text-muted); line-height: 1.75; }
     .dr-content h1, .dr-content h2, .dr-content h3 { color: var(--text); font-family: var(--font); margin: 1.2em 0 0.5em; }
     .dr-content h2 { color: var(--teal); border-bottom: 1px solid var(--border); padding-bottom: 6px; }
     .dr-content strong { color: var(--text); }
@@ -250,6 +255,8 @@
     .dr-content ul, .dr-content ol { margin-left: 1.4em; margin-bottom: 0.8em; }
     .dr-content li { margin-bottom: 3px; }
     .dr-content p { margin-bottom: 0.7em; }
+    .btn-expand { background: var(--surface2); border: 1px solid var(--border); color: var(--text-muted); padding: 4px 9px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-family: var(--font); transition: all 0.15s; }
+    .btn-expand:hover { border-color: var(--teal); color: var(--teal); }
 
     /* TEAM */
     .mission-stmt { background: var(--teal-dim); border: 1px solid rgba(0,229,200,0.2); border-radius: 10px; padding: 14px 18px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 10px; }
@@ -978,14 +985,17 @@
 
 <!-- Doc Reader Modal -->
 <div class="mo" id="docModal">
-  <div class="doc-reader">
+  <div class="doc-reader" id="docReaderBox">
     <div class="mo-hdr">
       <div class="mo-title" id="docModalTitle">Document</div>
       <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn-expand" onclick="toggleDocFullscreen()" id="docExpandBtn" title="Toggle fullscreen">⛶ Expand</button>
         <button class="btn btns btnsm" onclick="copyDoc()">📋 Copy</button>
         <button class="mo-x" onclick="closeModal('docModal')">✕</button>
       </div>
     </div>
+    <div class="dr-meta" id="docModalMeta"></div>
+    <div class="dr-divider"></div>
     <div class="dr-content" id="docModalContent"></div>
   </div>
 </div>
@@ -1900,13 +1910,39 @@ function openDoc(id) {
   if (!d) return;
   currentDocContent = d.content || '';
   document.getElementById('docModalTitle').textContent = d.title || 'Document';
-  document.getElementById('docModalContent').innerHTML = renderMd(d.content||'No content.');
+
+  // Metadata bar
+  const cat = (d.category || d.doc_type || 'other').toLowerCase();
+  const wordCount = (d.content||'').trim().split(/\s+/).filter(Boolean).length;
+  const dateStr = d.created_at ? new Date(d.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+  const updatedStr = d.updated_at && d.updated_at !== d.created_at
+    ? `<span class="dr-meta-pill">Updated ${new Date(d.updated_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>` : '';
+  document.getElementById('docModalMeta').innerHTML =
+    `<span class="dr-meta-pill cat">${cat}</span>` +
+    (dateStr ? `<span class="dr-meta-pill">📅 ${dateStr}</span>` : '') +
+    `<span class="dr-meta-pill">~${wordCount} words</span>` +
+    updatedStr;
+
+  // Content — full render
+  document.getElementById('docModalContent').innerHTML = renderMd(d.content || '*No content stored for this document.*');
+
+  // Reset fullscreen state
+  document.getElementById('docReaderBox').classList.remove('fullscreen');
+  document.getElementById('docExpandBtn').textContent = '⛶ Expand';
+
   openModal('docModal');
+}
+
+function toggleDocFullscreen() {
+  const box = document.getElementById('docReaderBox');
+  const btn = document.getElementById('docExpandBtn');
+  const isFs = box.classList.toggle('fullscreen');
+  btn.textContent = isFs ? '⊠ Collapse' : '⛶ Expand';
 }
 
 function copyDoc() {
   navigator.clipboard.writeText(currentDocContent).then(() => {
-    const btn = document.querySelector('#docModal .btn-copy') || document.querySelector('#docModal .btns');
+    const btn = document.querySelector('#docModal .btns');
     if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => btn.textContent = '📋 Copy', 1500); }
   });
 }
