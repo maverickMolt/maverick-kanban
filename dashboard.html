@@ -1886,7 +1886,7 @@ function filterDocs() { renderDocs(); }
 function renderDocs() {
   const q = document.getElementById('docSearch').value.toLowerCase();
   const filtered = allDocs.filter(d => {
-    const catMatch = docCat === 'all' || (d.category||'other').toLowerCase() === docCat;
+    const catMatch = docCat === 'all' || (d.doc_type||d.category||'other').toLowerCase() === docCat;
     const textMatch = !q || (d.title||'').toLowerCase().includes(q) || (d.content||'').toLowerCase().includes(q);
     return catMatch && textMatch;
   });
@@ -1900,14 +1900,14 @@ function renderDocs() {
   }
   const catColors = { planning:'b-purple', research:'b-blue', content:'bg2', infrastructure:'bt', other:'bx' };
   grid.innerHTML = filtered.map(d => {
-    const cat = (d.category||'other').toLowerCase();
-    const preview = (d.content||'').slice(0,100);
+    const cat = (d.doc_type||d.category||'other').toLowerCase();
+    const preview = (d.content||'').slice(0,120);
     return `<div class="dcard" onclick="openDoc('${d.id}')">
       <div class="dc-top">
         <div class="dc-title">${d.title||'Untitled'}</div>
-        <span class="badge ${catColors[cat]||'bx'}">${d.category||'other'}</span>
+        <span class="badge ${catColors[cat]||'bx'}">${cat}</span>
       </div>
-      <div class="dc-prev">${preview}${preview.length>=100?'…':''}</div>
+      <div class="dc-prev">${preview}${(d.content||'').length>120?'…':''}</div>
       <div class="dc-ft"><span>${shortDate(d.created_at)}</span></div>
     </div>`;
   }).join('');
