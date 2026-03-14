@@ -60,6 +60,21 @@
     .sec { font-size: 0.62rem; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
     .sec::after { content: ''; flex: 1; height: 1px; background: var(--border); }
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; text-align: center; }
+    .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+    .stat-val { font-size: 22px; font-weight: 700; color: var(--accent); }
+    .gh-filter { background: var(--card, var(--surface)); border: 1px solid var(--border); color: var(--muted); font-size: 10px; padding: 3px 10px; border-radius: 4px; cursor: pointer; text-transform: uppercase; letter-spacing: .05em; }
+    .gh-filter.active, .gh-filter:hover { border-color: var(--accent); color: var(--accent); }
+    .gh-badge { display: inline-block; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; letter-spacing: .04em; }
+    .gh-badge.speed { background: #0a2030; color: #17a0d4; border: 1px solid #17a0d4; }
+    .gh-badge.unlock { background: #2a1f00; color: #d4a017; border: 1px solid #d4a017; }
+    .gh-badge.augmentation { background: #1a1a2a; color: #a017d4; border: 1px solid #a017d4; }
+    .gh-bar-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+    .gh-bar-label { font-size: 10px; color: var(--muted); width: 48px; flex-shrink: 0; text-align: right; }
+    .gh-bar-track { flex: 1; height: 12px; background: var(--border); border-radius: 2px; overflow: hidden; display: flex; }
+    .gh-bar-human { background: #3a2020; height: 100%; }
+    .gh-bar-ghost { background: var(--accent); height: 100%; opacity: .8; }
+    .gh-bar-val { font-size: 10px; color: var(--muted); width: 32px; flex-shrink: 0; }
     .orb { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .og { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pa 2s infinite; }
     .oy { background: var(--gold); box-shadow: 0 0 8px var(--gold); animation: pa 2s infinite; }
@@ -520,6 +535,9 @@
     <a class="nav-item" data-screen="team" href="#team">
       <span class="nav-icon">👥</span><span class="nav-lbl">Team</span>
     </a>
+    <a class="nav-item" data-screen="ghost" href="#ghost">
+      <span class="ni">🕯</span><span class="nl">Ghost Hours</span>
+    </a>
     <a class="nav-item" data-screen="office" href="#office">
       <span class="nav-icon">🏟️</span><span class="nav-lbl">Office</span>
     </a>
@@ -883,6 +901,67 @@
           <span class="osb-task" id="offScoutTask">—</span>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 9: GHOST HOURS -->
+  <div class="screen" id="screen-ghost">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div>
+        <h2 style="font-size:18px;font-weight:700;color:var(--accent)">🕯 Ghost Hours</h2>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">AI leverage tracking — Raven Systems / Dustin Pollock</div>
+      </div>
+      <button onclick="loadGhostHours()" style="background:var(--card);border:1px solid var(--border);color:var(--muted);font-size:11px;padding:5px 12px;border-radius:5px;cursor:pointer;">↻ Refresh</button>
+    </div>
+
+    <!-- Stats Row -->
+    <div id="ghStats" style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;">
+      <div class="stat-card"><div class="stat-label">Sessions</div><div class="stat-val" id="gh-sessions">—</div></div>
+      <div class="stat-card"><div class="stat-label">Human Hours</div><div class="stat-val" id="gh-hh">—</div></div>
+      <div class="stat-card"><div class="stat-label">Ghost Hours</div><div class="stat-val" id="gh-gh">—</div></div>
+      <div class="stat-card"><div class="stat-label">Leverage Ratio</div><div class="stat-val" id="gh-cr">—</div></div>
+      <div class="stat-card"><div class="stat-label">Avg FW-C</div><div class="stat-val" id="gh-fwc">—</div></div>
+    </div>
+
+    <!-- Split row: bar chart + donut -->
+    <div style="display:grid;grid-template-columns:1fr 220px;gap:14px;margin-bottom:14px;">
+      <div class="card" style="padding:16px;">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Daily Ghost Hours (last 14 days)</div>
+        <div id="ghDailyBars"></div>
+      </div>
+      <div class="card" style="padding:16px;">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Session Split</div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;">
+          <svg id="ghDonut" width="90" height="90" viewBox="0 0 100 100"></svg>
+          <div id="ghDonutLegend" style="font-size:11px;color:var(--text-secondary);line-height:1.8;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sessions table -->
+    <div class="card" style="padding:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Sessions</div>
+        <div style="display:flex;gap:6px;">
+          <button class="gh-filter active" onclick="ghFilter('all',this)">All</button>
+          <button class="gh-filter" onclick="ghFilter('speed',this)">Speed</button>
+          <button class="gh-filter" onclick="ghFilter('unlock',this)">Unlock</button>
+        </div>
+      </div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead>
+          <tr style="color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.06em;">
+            <th style="padding:5px 8px;text-align:left;border-bottom:1px solid var(--border);">Date</th>
+            <th style="padding:5px 8px;text-align:left;border-bottom:1px solid var(--border);">Type</th>
+            <th style="padding:5px 8px;text-align:left;border-bottom:1px solid var(--border);">Description</th>
+            <th style="padding:5px 8px;text-align:left;border-bottom:1px solid var(--border);">HH</th>
+            <th style="padding:5px 8px;text-align:left;border-bottom:1px solid var(--border);">GH</th>
+            <th style="padding:5px 8px;text-align:left;border-bottom:1px solid var(--border);">FW-C</th>
+          </tr>
+        </thead>
+        <tbody id="ghTableBody"></tbody>
+      </table>
+      <div id="ghNoData" style="text-align:center;color:var(--muted);padding:30px;font-size:12px;display:none;">No sessions logged yet.</div>
     </div>
   </div>
 
@@ -2171,6 +2250,167 @@ document.addEventListener('DOMContentLoaded', () => {
   navigate(h);
   setupRefreshes();
 });
+
+// SCREEN 9: GHOST HOURS
+// Reads ~/.ghost-hours/leverage/log.jsonl via a local file input OR embedded data
+// Since the dashboard is a local file, we use the File System Access API or a fallback
+
+let GH_ENTRIES = [];
+let ghCurrentFilter = 'all';
+
+async function loadGhostHours() {
+  // Try to load via fetch (works if dashboard is served locally or file has data embedded)
+  try {
+    // First try embedded data (synced by gh-sync.sh equivalent)
+    const el = document.getElementById('gh-embedded-data');
+    if (el && el.textContent.trim()) {
+      GH_ENTRIES = JSON.parse(el.textContent);
+      renderGhostHours();
+      return;
+    }
+  } catch(e) {}
+
+  // Fallback: prompt user to pick the log file
+  document.getElementById('ghNoData').style.display = 'block';
+  document.getElementById('ghNoData').innerHTML =
+    '📁 <a href="#" onclick="ghPickFile()" style="color:var(--accent)">Click to load log.jsonl</a>' +
+    '<br><small style="color:var(--muted)">~/.ghost-hours/leverage/log.jsonl</small>';
+}
+
+async function ghPickFile() {
+  try {
+    const [fh] = await window.showOpenFilePicker({ types: [{ accept: { 'application/json': ['.jsonl', '.json'] } }] });
+    const file = await fh.getFile();
+    const text = await file.text();
+    GH_ENTRIES = text.trim().split('\n').filter(Boolean).map(l => {
+      try { return JSON.parse(l); } catch(e) { return null; }
+    }).filter(Boolean);
+    renderGhostHours();
+  } catch(e) {
+    if (e.name !== 'AbortError') console.error('GH file load error:', e);
+  }
+}
+
+function ghSessions() {
+  return GH_ENTRIES.filter(e => e.type !== 'retrospection');
+}
+
+function ghFmtMins(m) {
+  if (m == null) return '—';
+  if (m < 60) return m + 'm';
+  return (m/60).toFixed(1) + 'h';
+}
+
+function renderGhostHours() {
+  const s = ghSessions();
+  document.getElementById('ghNoData').style.display = s.length ? 'none' : 'block';
+  if (!s.length) { document.getElementById('ghNoData').innerHTML = 'No sessions logged yet.'; return; }
+
+  // Stats
+  const totalHH = s.reduce((a,e) => a+(e.human_mins||0), 0);
+  const totalGH = s.reduce((a,e) => a+(e.gh_mins||0), 0);
+  const cr = totalHH > 0 ? (totalGH/totalHH).toFixed(1)+'x' : '—';
+  const fwcE = s.filter(e=>e.fwc!=null);
+  const avgFWC = fwcE.length ? (fwcE.reduce((a,e)=>a+e.fwc,0)/fwcE.length).toFixed(1) : '—';
+
+  document.getElementById('gh-sessions').textContent = s.length;
+  document.getElementById('gh-hh').textContent = ghFmtMins(totalHH);
+  document.getElementById('gh-gh').textContent = ghFmtMins(totalGH);
+  document.getElementById('gh-cr').textContent = cr;
+  document.getElementById('gh-fwc').textContent = avgFWC;
+
+  // Daily bars
+  const byDay = {};
+  s.forEach(e => { if(!byDay[e.date]) byDay[e.date]={hh:0,gh:0}; byDay[e.date].hh+=e.human_mins||0; byDay[e.date].gh+=e.gh_mins||0; });
+  const days = Object.keys(byDay).sort().slice(-14);
+  const maxGH = Math.max(...days.map(d=>byDay[d].gh), 1);
+  document.getElementById('ghDailyBars').innerHTML = days.length ? days.map(d => {
+    const {hh,gh} = byDay[d];
+    const tot = hh+gh || 1;
+    return `<div class="gh-bar-row">
+      <div class="gh-bar-label">${d.slice(5)}</div>
+      <div class="gh-bar-track">
+        <div class="gh-bar-human" style="width:${(hh/tot*100).toFixed(0)}%"></div>
+        <div class="gh-bar-ghost" style="width:${(gh/tot*100).toFixed(0)}%"></div>
+      </div>
+      <div class="gh-bar-val">${ghFmtMins(gh)}</div>
+    </div>`;
+  }).join('') : '<div style="color:var(--muted);font-size:11px;text-align:center;padding:20px">No data yet</div>';
+
+  // Donut
+  const spd = s.filter(e=>e.type==='speed').length;
+  const unl = s.filter(e=>e.type==='unlock').length;
+  const tot = spd+unl || 1;
+  const circ = 2*Math.PI*30;
+  const spdDash = (spd/tot)*circ;
+  const unlDash = (unl/tot)*circ;
+  document.getElementById('ghDonut').innerHTML = `
+    <circle cx="50" cy="50" r="30" fill="none" stroke="#17a0d4" stroke-width="14"
+      stroke-dasharray="${spdDash} ${circ}" stroke-dashoffset="${circ*.25}"/>
+    <circle cx="50" cy="50" r="30" fill="none" stroke="#d4a017" stroke-width="14"
+      stroke-dasharray="${unlDash} ${circ}" stroke-dashoffset="${circ*.25-spdDash}"/>
+    <text x="50" y="54" text-anchor="middle" fill="var(--text)" font-size="11" font-weight="700">${tot}</text>
+  `;
+  document.getElementById('ghDonutLegend').innerHTML =
+    `<div>🔵 Speed: ${spd} (${(spd/tot*100).toFixed(0)}%)</div>` +
+    `<div>🟡 Unlock: ${unl} (${(unl/tot*100).toFixed(0)}%)</div>`;
+
+  // Table
+  renderGhTable();
+}
+
+function renderGhTable() {
+  const s = ghSessions()
+    .filter(e => ghCurrentFilter === 'all' || e.type === ghCurrentFilter)
+    .sort((a,b) => b.ts.localeCompare(a.ts));
+
+  const tbody = document.getElementById('ghTableBody');
+  if (!s.length) { tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px;">No sessions match filter.</td></tr>`; return; }
+
+  tbody.innerHTML = s.map((e,i) => {
+    const cr = e.human_mins > 0 ? (e.gh_mins/e.human_mins).toFixed(1)+'x' : '—';
+    const sub = e.subtype;
+    const badgeClass = e.type==='speed' ? 'speed' : (sub==='augmentation' ? 'augmentation' : 'unlock');
+    const badgeLabel = e.type==='speed' ? 'Speed' : (sub ? `Unlock·${sub.charAt(0).toUpperCase()+sub.slice(1)}` : 'Unlock');
+    const expandId = `gh-exp-${i}`;
+    return `
+      <tr onclick="document.getElementById('${expandId}').style.display=document.getElementById('${expandId}').style.display==='none'?'table-row':'none'"
+          style="cursor:pointer;border-bottom:1px solid var(--border);">
+        <td style="padding:7px 8px;color:var(--text-secondary);">${e.date}</td>
+        <td style="padding:7px 8px;"><span class="gh-badge ${badgeClass}">${badgeLabel}</span></td>
+        <td style="padding:7px 8px;">${e.desc||'—'}</td>
+        <td style="padding:7px 8px;color:var(--muted);">${ghFmtMins(e.human_mins)}</td>
+        <td style="padding:7px 8px;color:var(--muted);">${ghFmtMins(e.gh_mins)} <span style="font-size:10px;opacity:.6">(${cr})</span></td>
+        <td style="padding:7px 8px;color:var(--muted);">${e.fwc!=null?e.fwc+'/10':'—'}</td>
+      </tr>
+      <tr id="${expandId}" style="display:none;background:var(--surface);">
+        <td colspan="6" style="padding:8px 16px;font-size:11px;color:var(--text-secondary);border-bottom:1px solid var(--border);">
+          ${e.project?`<b>Project:</b> ${e.project} &nbsp;`:''}
+          ${e.backlog_months!=null?`<b>Backlog:</b> ${e.backlog_months}mo (weight: ${e.backlog_weight}) &nbsp;`:''}
+          ${e.tags&&e.tags.length?`<b>Tags:</b> ${e.tags.join(', ')} &nbsp;`:''}
+          ${e.source?`<b>Source:</b> ${e.source}`:''}
+          ${e.note?`<div style="margin-top:6px;border-left:2px solid var(--border);padding-left:8px;color:var(--muted);font-style:italic;">"${e.note}"</div>`:''}
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+function ghFilter(f, btn) {
+  ghCurrentFilter = f;
+  document.querySelectorAll('.gh-filter').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGhTable();
+}
+
+// Auto-load when Ghost Hours screen is navigated to
+const _origNavigate = typeof navigate === 'function' ? navigate : null;
+if (_origNavigate) {
+  const _nav = navigate;
+  navigate = function(screen, ...args) {
+    _nav(screen, ...args);
+    if (screen === 'ghost') loadGhostHours();
+  };
+}
 </script>
 </body>
 </html>
