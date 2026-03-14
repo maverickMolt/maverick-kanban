@@ -2258,37 +2258,16 @@ let GH_ENTRIES = [{"ts": "2026-03-14T21:52:07Z", "date": "2026-03-14", "type": "
 // GH_MC_DATA_END
 let ghCurrentFilter = 'all';
 
-async function loadGhostHours() {
-  // Try to load via fetch (works if dashboard is served locally or file has data embedded)
-  try {
-    // First try embedded data (synced by gh-sync.sh equivalent)
-    const el = document.getElementById('gh-embedded-data');
-    if (el && el.textContent.trim()) {
-      GH_ENTRIES = JSON.parse(el.textContent);
-      renderGhostHours();
-      return;
-    }
-  } catch(e) {}
-
-  // Fallback: prompt user to pick the log file
-  document.getElementById('ghNoData').style.display = 'block';
-  document.getElementById('ghNoData').innerHTML =
-    '📁 <a href="#" onclick="ghPickFile()" style="color:var(--accent)">Click to load log.jsonl</a>' +
-    '<br><small style="color:var(--muted)">~/.ghost-hours/leverage/log.jsonl</small>';
-}
-
-async function ghPickFile() {
-  try {
-    const [fh] = await window.showOpenFilePicker({ types: [{ accept: { 'application/json': ['.jsonl', '.json'] } }] });
-    const file = await fh.getFile();
-    const text = await file.text();
-    GH_ENTRIES = text.trim().split('\n').filter(Boolean).map(l => {
-      try { return JSON.parse(l); } catch(e) { return null; }
-    }).filter(Boolean);
-    renderGhostHours();
-  } catch(e) {
-    if (e.name !== 'AbortError') console.error('GH file load error:', e);
+function loadGhostHours() {
+  // GH_ENTRIES is embedded at deploy time by gh-sync.sh (GH_MC_DATA_START sentinel)
+  // If empty (fresh clone before first sync), show helpful message
+  if (!GH_ENTRIES || !GH_ENTRIES.length) {
+    document.getElementById('ghNoData').style.display = 'block';
+    document.getElementById('ghNoData').innerHTML =
+      'No sessions logged yet.<br><small style="color:var(--muted)">Run log-leverage.sh to log a session, then gh-sync.sh to push here.</small>';
+    return;
   }
+  renderGhostHours();
 }
 
 function ghSessions() {
