@@ -2252,10 +2252,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // SCREEN 9: GHOST HOURS
-// Reads ~/.ghost-hours/leverage/log.jsonl via a local file input OR embedded data
-// Since the dashboard is a local file, we use the File System Access API or a fallback
-
-let GH_ENTRIES = [];
+// GH_ENTRIES is embedded at deploy time by gh-sync.sh
+// GH_MC_DATA_START
+let GH_ENTRIES = [{"ts": "2026-03-14T21:52:07Z", "date": "2026-03-14", "type": "speed", "human_mins": 5, "gh_mins": 30, "desc": "Ghost Hours install smoke test", "source": "openclaw", "tags": [], "fwc": 3}];
+// GH_MC_DATA_END
 let ghCurrentFilter = 'all';
 
 async function loadGhostHours() {
